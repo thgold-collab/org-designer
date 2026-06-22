@@ -20,7 +20,7 @@ const FIELD_ALIASES: Record<FieldKey, string[]> = {
   costCenter: ["costcenter", "cc", "costcentre", "costcenterid"],
   tenureMonths: ["tenure", "tenuremonths", "monthsofservice", "tenureinmonths"],
   rating: ["rating", "performance", "performancerating", "perfrating", "review"],
-  isVacancy: ["vacancy", "isvacancy", "open", "openreq", "vacant", "tbh"],
+  status: ["status", "vacancy", "isvacancy", "open", "openreq", "vacant", "tbh", "employmentstatus", "fillstatus"],
 };
 
 /** Fields shown (in order) in the import wizard. */
@@ -37,7 +37,7 @@ export const ROSTER_FIELDS: { key: FieldKey; label: string; needed?: boolean }[]
   { key: "costCenter", label: "Cost center" },
   { key: "tenureMonths", label: "Tenure (months)" },
   { key: "rating", label: "Performance rating" },
-  { key: "isVacancy", label: "Open role / vacancy" },
+  { key: "status", label: "Status (open / future hire)" },
 ];
 
 function norm(s: string): string {
@@ -50,12 +50,12 @@ function num(v: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function bool(v: unknown): boolean | undefined {
+function parseStatus(v: unknown): "open" | "future" | undefined {
   if (v == null || v === "") return undefined;
   const s = String(v).trim().toLowerCase();
-  if (["true", "yes", "y", "1", "vacant", "open"].includes(s)) return true;
-  if (["false", "no", "n", "0"].includes(s)) return false;
-  return undefined;
+  if (s.includes("future")) return "future"; // "future hire", "future"
+  if (["true", "yes", "y", "1", "vacant", "open", "openreq", "tbh"].includes(s)) return "open";
+  return undefined; // filled / anything else
 }
 
 export interface RawCsv {
@@ -128,7 +128,7 @@ export function buildEmployees(
       costCenter: get(r, "costCenter") || undefined,
       tenureMonths: num(get(r, "tenureMonths")),
       rating: get(r, "rating") || undefined,
-      isVacancy: bool(get(r, "isVacancy")),
+      status: parseStatus(get(r, "status")),
     });
   }
 

@@ -32,8 +32,11 @@ const EDIT_FIELDS: [keyof Employee, string][] = [
   ["location", "Location"],
   ["level", "Level"],
   ["salary", "Salary"],
-  ["isVacancy", "Open role"],
+  ["status", "Status"],
 ];
+
+const statusLabel = (v: unknown) =>
+  v === "open" ? "Open role" : v === "future" ? "Future hire" : "Filled";
 
 function diffRosters(baseline: Employee[], current: Employee[]) {
   const base = new Map(baseline.map((e) => [e.id, e]));
@@ -60,8 +63,8 @@ function diffRosters(baseline: Employee[], current: Employee[]) {
     }
     const changes: FieldChange["changes"] = [];
     for (const [field, label] of EDIT_FIELDS) {
-      const bv = field === "isVacancy" ? (b[field] ? "Yes" : "No") : b[field] ?? "—";
-      const cv = field === "isVacancy" ? (e[field] ? "Yes" : "No") : e[field] ?? "—";
+      const bv = field === "status" ? statusLabel(b[field]) : b[field] ?? "—";
+      const cv = field === "status" ? statusLabel(e[field]) : e[field] ?? "—";
       if (String(bv) !== String(cv)) {
         changes.push({
           field: label,
@@ -97,6 +100,7 @@ function metricRows(base: OrgMetrics, cur: OrgMetrics): MetricRow[] {
     { label: "Managers", base: base.managers, cur: cur.managers, fmt: i, goodDir: "down" },
     { label: "Individual contributors", base: base.ics, cur: cur.ics, fmt: i, goodDir: "none" },
     { label: "Open roles", base: base.vacancies, cur: cur.vacancies, fmt: i, goodDir: "none" },
+    { label: "Future hires", base: base.futureHires, cur: cur.futureHires, fmt: i, goodDir: "none" },
     { label: "Avg span of control", base: base.avgSpan, cur: cur.avgSpan, fmt: f1, goodDir: "up" },
     { label: "Median span", base: base.medianSpan, cur: cur.medianSpan, fmt: f1, goodDir: "up" },
     { label: "Narrow-span managers", base: base.narrowSpans, cur: cur.narrowSpans, fmt: i, goodDir: "down" },

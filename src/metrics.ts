@@ -148,7 +148,8 @@ export function computeMetrics(
   const layout = layoutForest(employees);
 
   const headcount = employees.length;
-  const vacancies = employees.filter((e) => e.isVacancy).length;
+  const vacancies = employees.filter((e) => e.status === "open").length;
+  const futureHires = employees.filter((e) => e.status === "future").length;
 
   // A manager is anyone with >= 1 direct report.
   const spans: number[] = [];
@@ -197,6 +198,7 @@ export function computeMetrics(
     managers,
     ics,
     vacancies,
+    futureHires,
     avgSpan: managers ? sumSpan / managers : 0,
     medianSpan: quantile(spans, 0.5),
     maxSpan: spans.length ? spans[spans.length - 1] : 0,

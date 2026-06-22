@@ -36,7 +36,7 @@ interface OrgState {
   loadRoster: (employees: Employee[], makeBaseline?: boolean) => void;
   reparent: (nodeId: string, newManagerId: string | null) => boolean;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
-  deleteEmployee: (id: string) => void;
+  deleteEmployee: (id: string, mode?: "promote" | "orphan") => void;
   select: (id: string | null) => void;
   setThresholds: (t: Partial<Thresholds>) => void;
   setBaselineToCurrent: (label?: string) => void;
@@ -135,7 +135,7 @@ export const useOrg = create<OrgState>((set, get) => ({
         name: "Open Role",
         title: "New Role",
         managerId: mid,
-        isVacancy: true,
+        status: "open",
         // inherit so it stays in the same department filter / location grouping
         department: mgr?.department,
         location: mgr?.location,
@@ -202,20 +202,28 @@ export const useOrg = create<OrgState>((set, get) => ({
       employees: s.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)),
     })),
 
-  deleteEmployee: (id) =>
+  deleteEmployee: (id, mode = "promote") =>
     set((s) => {
       const target = s.employees.find((e) => e.id === id);
       if (!target) return s;
-      // Re-home orphans to the deleted node's manager.
+      const reports = s.employees.filter((e) => e.managerId === id);
+      // promote = reports rise to the deleted node's manager; orphan = become roots.
+      const newMgr = mode === "promote" ? target.managerId ?? null : null;
       const employees = s.employees
         .filter((e) => e.id !== id)
-        .map((e) => (e.managerId === id ? { ...e, managerId: target.managerId } : e));
+        .map((e) => (e.managerId === id ? { ...e, managerId: newMgr } : e));
+      const note =
+        reports.length === 0
+          ? `Removed ${target.name}.`
+          : mode === "promote"
+          ? `Removed ${target.name}; ${reports.length} report${reports.length === 1 ? "" : "s"} moved up a level.`
+          : `Removed ${target.name}; ${reports.length} report${reports.length === 1 ? "" : "s"} left unassigned — drag them to a new manager.`;
       return {
         past: [...s.past, { employees: clone(s.employees), label: `Removed ${target.name}` }],
         future: [],
         employees,
         selectedId: null,
-        lastMessage: `Removed ${target.name}; reports moved up a level.`,
+        lastMessage: note,
       };
     }),
 

@@ -131,6 +131,7 @@ function MetricsView({ cur, base }: { cur: OrgMetrics; base: OrgMetrics }) {
         <Kpi label="Managers" value={String(cur.managers)} curRaw={cur.managers} baseRaw={base.managers} goodDir="down" />
         <Kpi label="Individual contributors" value={String(cur.ics)} curRaw={cur.ics} baseRaw={base.ics} goodDir="none" />
         <Kpi label="Open roles" value={String(cur.vacancies)} curRaw={cur.vacancies} baseRaw={base.vacancies} goodDir="none" />
+        <Kpi label="Future hires" value={String(cur.futureHires)} curRaw={cur.futureHires} baseRaw={base.futureHires} goodDir="none" />
       </div>
 
       <div className="section-title">Spans of control</div>

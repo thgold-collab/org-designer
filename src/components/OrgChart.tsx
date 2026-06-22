@@ -361,7 +361,8 @@ export function OrgChart() {
                 selectedId === n.id ? "selected" : "",
                 isDragging ? "dragging" : "",
                 isTarget ? "drop-target" : "",
-                n.emp.isVacancy ? "vacancy" : "",
+                n.emp.status === "open" ? "vacancy" : "",
+                n.emp.status === "future" ? "future-hire" : "",
               ].join(" ")}
               style={{ left: n.x, top: n.y }}
               onPointerDown={(e) => onNodePointerDown(e, n.id)}
@@ -415,7 +416,10 @@ function NodeBody({ n, flag }: { n: LayoutNode; flag: "narrow" | "wide" | "ok" }
   const span = n.directReports;
   return (
     <>
-      <div className="n-name">{n.emp.name}{n.emp.isVacancy ? " (open)" : ""}</div>
+      <div className="n-name">
+        {n.emp.name}
+        {n.emp.status === "open" ? " (open)" : n.emp.status === "future" ? " (future hire)" : ""}
+      </div>
       <div className="n-title">{n.emp.title ?? "—"}</div>
       <div className="n-meta">
         {span > 0 && (

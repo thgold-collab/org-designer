@@ -17,8 +17,13 @@ export interface Employee {
   // Performance / flags
   tenureMonths?: number;
   rating?: string;
-  isVacancy?: boolean;
+
+  /** Role fill status. Undefined means a filled position (a current employee). */
+  status?: EmpStatus;
 }
+
+/** A position can be filled, an open req, or a named-but-not-started future hire. */
+export type EmpStatus = "open" | "future";
 
 /** A node in the laid-out tree (positions added by d3-hierarchy). */
 export interface LayoutNode {
@@ -37,7 +42,8 @@ export interface OrgMetrics {
   headcount: number;
   managers: number;
   ics: number;
-  vacancies: number;
+  vacancies: number; // open roles
+  futureHires: number;
 
   // Spans of control (over managers only)
   avgSpan: number;

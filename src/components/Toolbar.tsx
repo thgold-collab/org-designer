@@ -9,11 +9,11 @@ import type { Employee } from "../types";
 function exportCsv(employees: Employee[]): string {
   const cols: (keyof Employee)[] = [
     "id", "name", "title", "managerId", "salary", "level", "fte",
-    "department", "location", "costCenter", "tenureMonths", "rating", "isVacancy",
+    "department", "location", "costCenter", "tenureMonths", "rating", "status",
   ];
   const headers = [
     "Employee ID", "Name", "Title", "Manager ID", "Salary", "Level", "FTE",
-    "Department", "Location", "Cost Center", "Tenure (mo)", "Rating", "Vacancy",
+    "Department", "Location", "Cost Center", "Tenure (mo)", "Rating", "Status",
   ];
   const esc = (v: unknown) => {
     if (v == null) return "";

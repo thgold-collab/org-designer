@@ -1,5 +1,5 @@
 import { useOrg } from "../store";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { buildForest } from "../metrics";
 
 export function DetailPanel() {
@@ -9,6 +9,7 @@ export function DetailPanel() {
   const del = useOrg((s) => s.deleteEmployee);
   const reparent = useOrg((s) => s.reparent);
   const addOpenRole = useOrg((s) => s.addOpenRole);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const emp = employees.find((e) => e.id === selectedId);
   const { childrenOf } = useMemo(() => buildForest(employees), [employees]);
@@ -19,6 +20,15 @@ export function DetailPanel() {
 
   const directReports = childrenOf.get(emp.id) ?? [];
   const managerOptions = employees.filter((e) => e.id !== emp.id);
+  const managerName = emp.managerId
+    ? employees.find((m) => m.id === emp.managerId)?.name ?? null
+    : null;
+
+  function onRemove() {
+    if (!emp) return;
+    if (directReports.length > 0) setConfirmDelete(true);
+    else del(emp.id);
+  }
 
   return (
     <div className="detail">
@@ -70,15 +80,17 @@ export function DetailPanel() {
         </div>
       </div>
 
-      <label>
-        <input
-          type="checkbox"
-          checked={!!emp.isVacancy}
-          onChange={(e) => update(emp.id, { isVacancy: e.target.checked })}
-          style={{ width: "auto", marginRight: 6 }}
-        />
-        Open / unfilled role
-      </label>
+      <label>Status</label>
+      <select
+        value={emp.status ?? "filled"}
+        onChange={(e) =>
+          update(emp.id, { status: e.target.value === "filled" ? undefined : (e.target.value as "open" | "future") })
+        }
+      >
+        <option value="filled">Filled — current employee</option>
+        <option value="open">Open role — to be hired</option>
+        <option value="future">Known future hire — named, not started</option>
+      </select>
 
       <div className="section-title">Snapshot</div>
       <div className="kpi-grid">
@@ -104,9 +116,41 @@ export function DetailPanel() {
       <button style={{ marginTop: 16, width: "100%" }} onClick={() => addOpenRole(emp.id)}>
         + Add open role under {emp.name}
       </button>
-      <button className="danger" style={{ marginTop: 8, width: "100%" }} onClick={() => del(emp.id)}>
+      <button className="danger" style={{ marginTop: 8, width: "100%" }} onClick={onRemove}>
         Remove {emp.name}
       </button>
+
+      {confirmDelete && (
+        <div className="modal-backdrop" onClick={() => setConfirmDelete(false)}>
+          <div className="modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Remove {emp.name}</h2>
+            <div className="modal-sub">
+              {emp.name} has {directReports.length} direct report{directReports.length === 1 ? "" : "s"}.
+              What should happen to them?
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+              <button
+                className="primary"
+                onClick={() => {
+                  del(emp.id, "promote");
+                  setConfirmDelete(false);
+                }}
+              >
+                Move them up to {managerName ?? "the top level"}
+              </button>
+              <button
+                onClick={() => {
+                  del(emp.id, "orphan");
+                  setConfirmDelete(false);
+                }}
+              >
+                Leave them unassigned (drag to a new manager later)
+              </button>
+              <button onClick={() => setConfirmDelete(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
