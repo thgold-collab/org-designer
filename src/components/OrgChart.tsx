@@ -102,6 +102,22 @@ export function OrgChart() {
     });
   }
 
+  // Hard safety net: if a gesture ended with no node on screen at all, snap the
+  // org back. Guarantees the chart can never be lost no matter the cause.
+  function ensureVisible() {
+    const wrap = wrapRef.current;
+    if (!wrap || nodes.length === 0) return;
+    const v = viewRef.current;
+    const cw = wrap.clientWidth;
+    const ch = wrap.clientHeight;
+    const anyVisible = nodes.some((n) => {
+      const sx = v.x + n.x * v.k;
+      const sy = v.y + n.y * v.k;
+      return sx + NODE_W * v.k > 0 && sx < cw && sy + NODE_H * v.k > 0 && sy < ch;
+    });
+    if (!anyVisible) recenter();
+  }
+
   // Re-center the org at the current zoom (the "bring it back" button).
   function recenter() {
     const wrap = wrapRef.current;
@@ -119,9 +135,16 @@ export function OrgChart() {
     if (!wrap) return v;
     const cw = wrap.clientWidth;
     const ch = wrap.clientHeight;
+    // Guard against any non-finite value sneaking in (would blank the canvas).
+    const k = Math.min(2.5, Math.max(0.15, Number.isFinite(v.k) ? v.k : 0.85));
+    const vx = Number.isFinite(v.x) ? v.x : (cw - width * k) / 2;
+    const vy = Number.isFinite(v.y) ? v.y : (ch - height * k) / 2;
+    v = { k, x: vx, y: vy };
     const contentW = Math.max(NODE_W, width) * v.k;
     const contentH = Math.max(NODE_H, height) * v.k;
-    const m = Math.min(120, cw * 0.4, ch * 0.4); // min visible content on each edge
+    // Keep a generous slice of the org on screen so panning can't strand it in a
+    // corner — at least ~45% of the shorter viewport edge stays filled.
+    const m = Math.min(cw, ch) * 0.45;
     const minX = m - contentW;
     const maxX = cw - m;
     const minY = m - contentH;
@@ -247,6 +270,7 @@ export function OrgChart() {
           panRef.current = null;
           setPanning(false);
         }
+        if (pointersRef.current.size === 0) requestAnimationFrame(ensureVisible);
       }
       if (drag) {
         if (!drag.moved) {
@@ -271,6 +295,7 @@ export function OrgChart() {
       if (pointersRef.current.size === 0) {
         panRef.current = null;
         setPanning(false);
+        requestAnimationFrame(ensureVisible);
       }
       if (drag) {
         setDrag(null);

@@ -33,7 +33,14 @@ html, body, #root {
   overflow: hidden;
 }
 
-html, body { overscroll-behavior: none; }
+html, body {
+  overscroll-behavior: none;
+  overflow: hidden;
+  height: 100%;
+  width: 100%;
+  position: fixed; /* lock the page so one-finger drags never scroll it on mobile */
+  inset: 0;
+}
 
 /* ---------- Toolbar ---------- */
 .toolbar {
@@ -116,6 +123,11 @@ button.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad)
   background-color: var(--bg);
   cursor: grab;
   touch-action: none; /* we handle pan/pinch ourselves */
+}
+/* Suppress native scroll/zoom for any touch that lands anywhere in the canvas. */
+.canvas-wrap,
+.canvas-wrap * {
+  touch-action: none;
 }
 .canvas-wrap.panning { cursor: grabbing; }
 .canvas-inner {
