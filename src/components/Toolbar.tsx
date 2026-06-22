@@ -3,12 +3,12 @@ import { useOrg, departmentsOf } from "../store";
 import { parseCsvRaw, autoMap, buildEmployees, mappingIsComplete, employeesToCsv } from "../csv";
 import { downloadText, slugify } from "../download";
 import { openChangeReport } from "../report";
-import { openChartExport } from "../chartExport";
 import { ImportWizard } from "./ImportWizard";
 import { BaselinePicker } from "./BaselinePicker";
 import { SearchBox } from "./SearchBox";
 import { ScenarioCompare } from "./ScenarioCompare";
 import { BulkActions } from "./BulkActions";
+import { ExportChartDialog } from "./ExportChartDialog";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 
 /* ------------------------------------------------------------------ *
@@ -109,7 +109,6 @@ export function Toolbar() {
   const addOpenRole = useOrg((s) => s.addOpenRole);
   const showDiff = useOrg((s) => s.showDiff);
   const toggleDiff = useOrg((s) => s.toggleDiff);
-  const collapsed = useOrg((s) => s.collapsed);
   const fileRef = useRef<HTMLInputElement>(null);
   const forceWizard = useRef(false);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -122,6 +121,7 @@ export function Toolbar() {
   const [showPicker, setShowPicker] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
   const [showBulk, setShowBulk] = useState(false);
+  const [showExportChart, setShowExportChart] = useState(false);
 
   // Which toolbar dropdown is open (desktop, one at a time).
   const [menu, setMenu] = useState<MenuId>(null);
@@ -228,8 +228,7 @@ export function Toolbar() {
   }
 
   function doExportChart() {
-    const ok = openChartExport(employees, collapsed, deptFilter, thresholds);
-    if (!ok) setWarnings(["Allow pop-ups for this site to open the chart export."]);
+    setShowExportChart(true);
   }
 
   // Single source of truth for the grouped actions — drives both the desktop
@@ -515,6 +514,7 @@ export function Toolbar() {
       {showPicker && <BaselinePicker onClose={() => setShowPicker(false)} />}
       {showCompare && <ScenarioCompare onClose={() => setShowCompare(false)} />}
       {showBulk && <BulkActions onClose={() => setShowBulk(false)} />}
+      {showExportChart && <ExportChartDialog onClose={() => setShowExportChart(false)} />}
     </>
   );
 }
