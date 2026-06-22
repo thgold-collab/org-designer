@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useOrg, departmentsOf } from "../store";
 import { parseRoster } from "../csv";
-import { SAMPLE_CSV, SAMPLE_ROSTER } from "../sampleData";
+import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 import type { Employee } from "../types";
 
 function exportCsv(employees: Employee[]): string {
@@ -77,8 +77,8 @@ export function Toolbar() {
 
         <button onClick={() => fileRef.current?.click()}>Import CSV…</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
-        <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample</button>
-        <button onClick={() => download("sample-roster.csv", SAMPLE_CSV)}>Get template</button>
+        <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample (600)</button>
+        <button onClick={() => download("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 

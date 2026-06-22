@@ -48,7 +48,7 @@ export const useOrg = create<OrgState>((set, get) => ({
   thresholds: { narrow: 3, wide: 9 },
   selectedId: null,
   deptFilter: null,
-  collapsed: new Set<string>(),
+  collapsed: collapseUnderRoots(SAMPLE_ROSTER),
   focusId: null,
   focusNonce: 0,
   rosterNonce: 0,
@@ -67,20 +67,7 @@ export const useOrg = create<OrgState>((set, get) => ({
     }),
 
   collapseAll: () =>
-    set((s) => {
-      // Collapse every manager except the top-level roots so the org reads
-      // as one row of leaders that can be opened up one branch at a time.
-      const hasReports = new Set<string>();
-      const isRoot = new Set<string>();
-      const byId = new Map(s.employees.map((e) => [e.id, e]));
-      for (const e of s.employees) {
-        if (e.managerId && byId.has(e.managerId)) hasReports.add(e.managerId);
-        if (!e.managerId || !byId.has(e.managerId)) isRoot.add(e.id);
-      }
-      const collapsed = new Set<string>();
-      for (const id of hasReports) if (!isRoot.has(id)) collapsed.add(id);
-      return { collapsed, lastMessage: "Collapsed all branches." };
-    }),
+    set((s) => ({ collapsed: collapseUnderRoots(s.employees), lastMessage: "Collapsed all branches." })),
 
   expandAll: () => set({ collapsed: new Set<string>(), lastMessage: "Expanded all branches." }),
 
@@ -115,7 +102,7 @@ export const useOrg = create<OrgState>((set, get) => ({
       future: [],
       selectedId: null,
       deptFilter: null,
-      collapsed: new Set<string>(),
+      collapsed: collapseUnderRoots(employees),
       focusId: null,
       rosterNonce: s.rosterNonce + 1,
       lastMessage: `Loaded ${employees.length} people.`,
@@ -208,6 +195,23 @@ export const useOrg = create<OrgState>((set, get) => ({
 
   clearMessage: () => set({ lastMessage: null }),
 }));
+
+/**
+ * Collapse every manager except the top-level roots, so the org opens as just
+ * the leader(s) plus their direct reports — each branch can then be expanded.
+ */
+export function collapseUnderRoots(employees: Employee[]): Set<string> {
+  const byId = new Map(employees.map((e) => [e.id, e]));
+  const isRoot = new Set<string>();
+  const hasReports = new Set<string>();
+  for (const e of employees) {
+    if (!e.managerId || !byId.has(e.managerId)) isRoot.add(e.id);
+    if (e.managerId && byId.has(e.managerId)) hasReports.add(e.managerId);
+  }
+  const collapsed = new Set<string>();
+  for (const id of hasReports) if (!isRoot.has(id)) collapsed.add(id);
+  return collapsed;
+}
 
 /** Sorted unique department names present in the roster. */
 export function departmentsOf(employees: Employee[]): string[] {
