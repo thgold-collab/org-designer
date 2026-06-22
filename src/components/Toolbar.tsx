@@ -76,6 +76,9 @@ export function Toolbar() {
     <>
       <div className="toolbar">
         <div className="brand">Org <span>Designer</span></div>
+        <span className="build-badge" title={`Build ${__BUILD_SHA__} · ${__BUILD_STAMP__}`}>
+          {__BUILD_SHA__} · {__BUILD_STAMP__}
+        </span>
 
         <button onClick={() => fileRef.current?.click()}>Import CSV…</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
