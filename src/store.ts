@@ -8,11 +8,21 @@ interface HistoryEntry {
   label: string;
 }
 
+/** A named saved org state you can restore or compare against. */
+export interface Snapshot {
+  id: string;
+  label: string;
+  at: string; // display timestamp
+  employees: Employee[];
+}
+
 interface OrgState {
   employees: Employee[]; // working set
-  baseline: Employee[]; // snapshot for before/after diff
-  baselineLabel: string; // name of the baseline scenario (used in reports)
-  baselineAt: string; // when the baseline was captured (display string)
+  snapshots: Snapshot[]; // all saved baselines/scenarios this session
+  baselineId: string | null; // which snapshot the change report compares against
+  baseline: Employee[]; // mirror of the active baseline's employees (for diff)
+  baselineLabel: string; // active baseline name (used in reports)
+  baselineAt: string; // when the active baseline was captured
   thresholds: Thresholds;
   selectedId: string | null;
   deptFilter: string | null; // null = whole org
@@ -39,8 +49,10 @@ interface OrgState {
   deleteEmployee: (id: string, mode?: "promote" | "orphan") => void;
   select: (id: string | null) => void;
   setThresholds: (t: Partial<Thresholds>) => void;
-  setBaselineToCurrent: (label?: string) => void;
-  resetToBaseline: () => void;
+  saveBaseline: (label?: string) => void;
+  restoreSnapshot: (id: string) => void;
+  setActiveBaseline: (id: string) => void;
+  deleteSnapshot: (id: string) => void;
   undo: () => void;
   redo: () => void;
   clearMessage: () => void;
@@ -51,11 +63,24 @@ const clone = (e: Employee[]) => e.map((x) => ({ ...x }));
 const nowStr = () =>
   new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 
+let snapSeq = 1;
+const newSnapId = () => `snap-${snapSeq++}`;
+const makeSnapshot = (label: string, employees: Employee[]): Snapshot => ({
+  id: newSnapId(),
+  label,
+  at: nowStr(),
+  employees: clone(employees),
+});
+
+const INITIAL_SNAPSHOT = makeSnapshot("Initial roster", SAMPLE_ROSTER);
+
 export const useOrg = create<OrgState>((set, get) => ({
   employees: clone(SAMPLE_ROSTER),
-  baseline: clone(SAMPLE_ROSTER),
-  baselineLabel: "Initial roster",
-  baselineAt: nowStr(),
+  snapshots: [INITIAL_SNAPSHOT],
+  baselineId: INITIAL_SNAPSHOT.id,
+  baseline: clone(INITIAL_SNAPSHOT.employees),
+  baselineLabel: INITIAL_SNAPSHOT.label,
+  baselineAt: INITIAL_SNAPSHOT.at,
   thresholds: { narrow: 3, wide: 9 },
   selectedId: null,
   deptFilter: null,
@@ -158,20 +183,40 @@ export const useOrg = create<OrgState>((set, get) => ({
     }),
 
   loadRoster: (employees, makeBaseline = true) =>
-    set((s) => ({
-      employees: clone(employees),
-      baseline: makeBaseline ? clone(employees) : s.baseline,
-      baselineLabel: makeBaseline ? "Imported roster" : s.baselineLabel,
-      baselineAt: makeBaseline ? nowStr() : s.baselineAt,
-      past: [],
-      future: [],
-      selectedId: null,
-      deptFilter: null,
-      collapsed: collapseUnderRoots(employees),
-      focusId: null,
-      rosterNonce: s.rosterNonce + 1,
-      lastMessage: `Loaded ${employees.length} people.`,
-    })),
+    set((s) => {
+      if (!makeBaseline) {
+        return {
+          employees: clone(employees),
+          past: [],
+          future: [],
+          selectedId: null,
+          deptFilter: null,
+          collapsed: collapseUnderRoots(employees),
+          focusId: null,
+          rosterNonce: s.rosterNonce + 1,
+          lastMessage: `Loaded ${employees.length} people.`,
+        };
+      }
+      // A fresh import starts a new scenario set — prior snapshots were about
+      // the old org, so reset to a single "Imported roster" baseline.
+      const snap = makeSnapshot("Imported roster", employees);
+      return {
+        employees: clone(employees),
+        snapshots: [snap],
+        baselineId: snap.id,
+        baseline: clone(snap.employees),
+        baselineLabel: snap.label,
+        baselineAt: snap.at,
+        past: [],
+        future: [],
+        selectedId: null,
+        deptFilter: null,
+        collapsed: collapseUnderRoots(employees),
+        focusId: null,
+        rosterNonce: s.rosterNonce + 1,
+        lastMessage: `Loaded ${employees.length} people.`,
+      };
+    }),
 
   reparent: (nodeId, newManagerId) => {
     const { employees } = get();
@@ -231,23 +276,68 @@ export const useOrg = create<OrgState>((set, get) => ({
 
   setThresholds: (t) => set((s) => ({ thresholds: { ...s.thresholds, ...t } })),
 
-  setBaselineToCurrent: (label) => {
+  // Save the current org as a new named snapshot and make it the active baseline.
+  saveBaseline: (label) => {
     const name = (label ?? "").trim() || `Baseline ${nowStr()}`;
-    set((s) => ({
-      baseline: clone(s.employees),
-      baselineLabel: name,
-      baselineAt: nowStr(),
-      lastMessage: `Baseline saved: “${name}”`,
-    }));
+    set((s) => {
+      const snap = makeSnapshot(name, s.employees);
+      return {
+        snapshots: [...s.snapshots, snap],
+        baselineId: snap.id,
+        baseline: clone(snap.employees),
+        baselineLabel: snap.label,
+        baselineAt: snap.at,
+        lastMessage: `Baseline saved: “${name}” (${s.snapshots.length + 1} saved)`,
+      };
+    });
   },
 
-  resetToBaseline: () =>
-    set((s) => ({
-      past: [...s.past, { employees: clone(s.employees), label: "Reset to baseline" }],
-      future: [],
-      employees: clone(s.baseline),
-      lastMessage: "Reverted to baseline.",
-    })),
+  // Load a saved snapshot back into the working org (undoable).
+  restoreSnapshot: (id) =>
+    set((s) => {
+      const snap = s.snapshots.find((x) => x.id === id);
+      if (!snap) return s;
+      return {
+        past: [...s.past, { employees: clone(s.employees), label: `Restore ${snap.label}` }],
+        future: [],
+        employees: clone(snap.employees),
+        collapsed: collapseUnderRoots(snap.employees),
+        selectedId: null,
+        focusId: null,
+        rosterNonce: s.rosterNonce + 1,
+        lastMessage: `Restored “${snap.label}”.`,
+      };
+    }),
+
+  // Choose which snapshot the change report / metric deltas compare against.
+  setActiveBaseline: (id) =>
+    set((s) => {
+      const snap = s.snapshots.find((x) => x.id === id);
+      if (!snap) return s;
+      return {
+        baselineId: snap.id,
+        baseline: clone(snap.employees),
+        baselineLabel: snap.label,
+        baselineAt: snap.at,
+        lastMessage: `Now comparing against “${snap.label}”.`,
+      };
+    }),
+
+  deleteSnapshot: (id) =>
+    set((s) => {
+      const snapshots = s.snapshots.filter((x) => x.id !== id);
+      if (snapshots.length === s.snapshots.length) return s;
+      // If the active baseline was deleted, fall back to the most recent remaining.
+      let { baselineId, baseline, baselineLabel, baselineAt } = s;
+      if (baselineId === id) {
+        const next = snapshots[snapshots.length - 1];
+        baselineId = next?.id ?? null;
+        baseline = next ? clone(next.employees) : s.baseline;
+        baselineLabel = next?.label ?? s.baselineLabel;
+        baselineAt = next?.at ?? s.baselineAt;
+      }
+      return { snapshots, baselineId, baseline, baselineLabel, baselineAt };
+    }),
 
   undo: () =>
     set((s) => {

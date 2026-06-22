@@ -1,39 +1,11 @@
 import { useMemo, useRef, useState } from "react";
 import { useOrg, departmentsOf } from "../store";
-import { parseCsvRaw, autoMap, buildEmployees, mappingIsComplete } from "../csv";
+import { parseCsvRaw, autoMap, buildEmployees, mappingIsComplete, employeesToCsv } from "../csv";
+import { downloadText, slugify } from "../download";
 import { openChangeReport } from "../report";
 import { ImportWizard } from "./ImportWizard";
+import { BaselinePicker } from "./BaselinePicker";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
-import type { Employee } from "../types";
-
-function exportCsv(employees: Employee[]): string {
-  const cols: (keyof Employee)[] = [
-    "id", "name", "title", "managerId", "salary", "level", "fte",
-    "department", "location", "costCenter", "tenureMonths", "rating", "status",
-  ];
-  const headers = [
-    "Employee ID", "Name", "Title", "Manager ID", "Salary", "Level", "FTE",
-    "Department", "Location", "Cost Center", "Tenure (mo)", "Rating", "Status",
-  ];
-  const esc = (v: unknown) => {
-    if (v == null) return "";
-    const s = String(v);
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-  };
-  const lines = [headers.join(",")];
-  for (const e of employees) lines.push(cols.map((c) => esc(e[c])).join(","));
-  return lines.join("\n");
-}
-
-function download(filename: string, text: string) {
-  const blob = new Blob([text], { type: "text/csv" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export function Toolbar() {
   const loadRoster = useOrg((s) => s.loadRoster);
@@ -41,8 +13,8 @@ export function Toolbar() {
   const baseline = useOrg((s) => s.baseline);
   const baselineLabel = useOrg((s) => s.baselineLabel);
   const baselineAt = useOrg((s) => s.baselineAt);
-  const setBaseline = useOrg((s) => s.setBaselineToCurrent);
-  const reset = useOrg((s) => s.resetToBaseline);
+  const saveBaseline = useOrg((s) => s.saveBaseline);
+  const snapshotCount = useOrg((s) => s.snapshots.length);
   const undo = useOrg((s) => s.undo);
   const redo = useOrg((s) => s.redo);
   const canUndo = useOrg((s) => s.past.length > 0);
@@ -63,6 +35,7 @@ export function Toolbar() {
     rows: Record<string, string>[];
     mapping: Record<string, string>;
   } | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
 
   const deptCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -115,7 +88,7 @@ export function Toolbar() {
         <button onClick={() => openImport(true)} title="Import and manually map columns">Map columns…</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
         <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample (600)</button>
-        <button onClick={() => download("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
+        <button onClick={() => downloadText("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 
@@ -180,15 +153,21 @@ export function Toolbar() {
         <button
           onClick={() => {
             const def = `Baseline ${new Date().toLocaleDateString()}`;
-            const label = window.prompt("Name this baseline (shown in the change report):", baselineLabel || def);
+            const label = window.prompt("Name this baseline (saved as a snapshot you can restore):", def);
             if (label === null) return; // cancelled
-            setBaseline(label);
+            const name = label.trim() || def;
+            saveBaseline(name);
+            if (window.confirm(`Saved “${name}”.\n\nAlso download a CSV copy so you can re-import it after closing the app?`)) {
+              downloadText(`${slugify(name)}.csv`, employeesToCsv(employees));
+            }
           }}
-          title="Snapshot the current org as the named 'before' to compare against"
+          title="Save the current org as a named snapshot (and optionally a CSV copy)"
         >
           Set baseline
         </button>
-        <button onClick={reset} className="danger">Reset to baseline</button>
+        <button onClick={() => setShowPicker(true)} title="Restore a saved baseline / choose what to compare against">
+          Restore baseline… ({snapshotCount})
+        </button>
         <button
           onClick={() => {
             const ok = openChangeReport(baseline, employees, thresholds, baselineLabel, baselineAt);
@@ -198,7 +177,7 @@ export function Toolbar() {
         >
           Change report (PDF)
         </button>
-        <button className="primary" onClick={() => download("org-scenario.csv", exportCsv(employees))}>
+        <button className="primary" onClick={() => downloadText("org-scenario.csv", employeesToCsv(employees))}>
           Export CSV
         </button>
       </div>
@@ -224,6 +203,7 @@ export function Toolbar() {
           }}
         />
       )}
+      {showPicker && <BaselinePicker onClose={() => setShowPicker(false)} />}
     </>
   );
 }

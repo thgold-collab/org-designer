@@ -180,6 +180,26 @@ export interface ParseResult extends BuildResult {
   mapping: Record<string, string>;
 }
 
+/** Serialize a roster back to CSV (used for export + saving baseline copies). */
+export function employeesToCsv(employees: Employee[]): string {
+  const cols: (keyof Employee)[] = [
+    "id", "name", "title", "managerId", "salary", "level", "fte",
+    "department", "location", "costCenter", "tenureMonths", "rating", "status",
+  ];
+  const headers = [
+    "Employee ID", "Name", "Title", "Manager ID", "Salary", "Level", "FTE",
+    "Department", "Location", "Cost Center", "Tenure (mo)", "Rating", "Status",
+  ];
+  const esc = (v: unknown) => {
+    if (v == null) return "";
+    const s = String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  for (const e of employees) lines.push(cols.map((c) => esc(e[c])).join(","));
+  return lines.join("\n");
+}
+
 /** One-shot parse with auto-mapping (used for the bundled sample + fast path). */
 export function parseRoster(text: string): ParseResult {
   const { headers, rows } = parseCsvRaw(text);
