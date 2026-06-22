@@ -40,10 +40,15 @@ export function OrgChart() {
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 80, y: 60, k: 0.85 });
+  const viewRef = useRef(view);
+  viewRef.current = view; // always-current view for gesture math (avoids stale closures)
   const [drag, setDrag] = useState<DragState | null>(null);
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
   const panRef = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   const [panning, setPanning] = useState(false);
+  // Active touch points on the background, and the in-progress pinch gesture.
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchRef = useRef<{ d0: number; k0: number; ax: number; ay: number; vx: number; vy: number } | null>(null);
 
   const { nodes, width, height } = useMemo(
     () => layoutForest(employees, collapsed),
@@ -84,24 +89,53 @@ export function OrgChart() {
 
   function fitToView() {
     const wrap = wrapRef.current;
-    if (!wrap || width === 0) return;
+    if (!wrap || width === 0 || wrap.clientWidth === 0) return;
     const pad = 60;
     const kx = (wrap.clientWidth - pad * 2) / width;
     const ky = (wrap.clientHeight - pad * 2) / height;
     const k = Math.min(1, Math.max(0.2, Math.min(kx, ky)));
     setView({
       x: (wrap.clientWidth - width * k) / 2,
-      y: pad,
+      // center vertically too when the tree is shorter than the viewport
+      y: Math.max(pad, (wrap.clientHeight - height * k) / 2),
       k,
     });
   }
 
-  // ----- Panning (drag on background) -----
+  // ----- Background gestures: 1 pointer = pan, 2 pointers = pinch-zoom -----
   function onWrapPointerDown(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest(".node")) return;
-    panRef.current = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
-    setPanning(true);
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* capture is best-effort; gesture state is what matters */
+    }
+
+    if (pointersRef.current.size >= 2) {
+      // Two fingers down: cancel any pan and begin pinch.
+      panRef.current = null;
+      setPanning(false);
+      startPinch();
+    } else {
+      panRef.current = { x: e.clientX, y: e.clientY, vx: viewRef.current.x, vy: viewRef.current.y };
+      setPanning(true);
+    }
+  }
+
+  function startPinch() {
+    const pts = [...pointersRef.current.values()];
+    if (pts.length < 2 || !wrapRef.current) return;
+    const [a, b] = pts;
+    const rect = wrapRef.current.getBoundingClientRect();
+    pinchRef.current = {
+      d0: Math.hypot(a.x - b.x, a.y - b.y) || 1,
+      k0: viewRef.current.k,
+      ax: (a.x + b.x) / 2 - rect.left, // pinch anchor (midpoint) in canvas-local coords
+      ay: (a.y + b.y) / 2 - rect.top,
+      vx: viewRef.current.x,
+      vy: viewRef.current.y,
+    };
   }
 
   // ----- Zoom (wheel) -----
@@ -124,13 +158,33 @@ export function OrgChart() {
   // ----- Node drag (reparent) -----
   function onNodePointerDown(e: React.PointerEvent, id: string) {
     e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    try {
+      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    } catch {
+      /* best-effort */
+    }
     setDrag({ id, startX: e.clientX, startY: e.clientY, curX: e.clientX, curY: e.clientY, moved: false });
   }
 
   // Global pointer move/up so drags survive leaving the node.
   useEffect(() => {
     function move(e: PointerEvent) {
+      if (pointersRef.current.has(e.pointerId)) {
+        pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      }
+      // Pinch-zoom (two fingers) takes priority.
+      if (pinchRef.current && pointersRef.current.size >= 2) {
+        const pts = [...pointersRef.current.values()];
+        const [a, b] = pts;
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        const p = pinchRef.current;
+        const k = Math.min(2.5, Math.max(0.15, p.k0 * (d / p.d0)));
+        // Keep the world point under the pinch anchor fixed as we scale.
+        const wx = (p.ax - p.vx) / p.k0;
+        const wy = (p.ay - p.vy) / p.k0;
+        setView({ k, x: p.ax - wx * k, y: p.ay - wy * k });
+        return;
+      }
       if (panRef.current) {
         setView((v) => ({
           ...v,
@@ -147,9 +201,21 @@ export function OrgChart() {
       }
     }
     function up(e: PointerEvent) {
-      if (panRef.current) {
-        panRef.current = null;
-        setPanning(false);
+      if (pointersRef.current.has(e.pointerId)) {
+        pointersRef.current.delete(e.pointerId);
+        // End pinch when fewer than two fingers remain; resume pan if one is left.
+        if (pinchRef.current && pointersRef.current.size < 2) {
+          pinchRef.current = null;
+          if (pointersRef.current.size === 1) {
+            const [pt] = [...pointersRef.current.values()];
+            panRef.current = { x: pt.x, y: pt.y, vx: viewRef.current.x, vy: viewRef.current.y };
+            setPanning(true);
+          }
+        }
+        if (panRef.current && pointersRef.current.size === 0) {
+          panRef.current = null;
+          setPanning(false);
+        }
       }
       if (drag) {
         if (!drag.moved) {

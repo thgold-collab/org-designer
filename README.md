@@ -32,6 +32,9 @@ npm run build    # production build into dist/
 - **Baseline diffing** — *Set baseline* snapshots the current org; every metric then
   shows how your edits move it. *Reset to baseline* reverts.
 - **Undo / redo** (⌘Z / ⌘⇧Z) and **Export CSV** of any scenario.
+- **Works on phone & tablet** — responsive layout (a bottom Chart/Metrics switch on
+  narrow screens) with full touch support: one-finger pan, pinch-to-zoom, and
+  drag-a-box to reassign. iPad landscape shows the full side-by-side desktop view.
 
 ## Roster columns
 
