@@ -239,11 +239,14 @@ export function OrgChart() {
         return;
       }
       if (panRef.current) {
+        // Capture the ref now — a pointerup/cancel can null panRef.current before
+        // React runs this updater, which on iOS threw "null is not an object".
+        const p = panRef.current;
         setView((v) =>
           clampView({
             k: v.k,
-            x: panRef.current!.vx + (e.clientX - panRef.current!.x),
-            y: panRef.current!.vy + (e.clientY - panRef.current!.y),
+            x: p.vx + (e.clientX - p.x),
+            y: p.vy + (e.clientY - p.y),
           })
         );
         return;
