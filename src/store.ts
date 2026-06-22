@@ -49,6 +49,9 @@ interface OrgState {
   reparent: (nodeId: string, newManagerId: string | null) => boolean;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
   deleteEmployee: (id: string, mode?: "promote" | "orphan") => void;
+  removeByStatus: (status: "open" | "future") => void;
+  delayerSingleReports: () => void;
+  reassignReports: (fromId: string, toId: string) => void;
   select: (id: string | null) => void;
   setThresholds: (t: Partial<Thresholds>) => void;
   saveBaseline: (label?: string) => void;
@@ -312,6 +315,68 @@ export const useOrg = create<OrgState>((set, get) => ({
       };
     }),
 
+  // Bulk: delete every position with a given status (reports promoted up).
+  removeByStatus: (status) =>
+    set((s) => {
+      const removed = new Set(s.employees.filter((e) => e.status === status).map((e) => e.id));
+      const noun = status === "open" ? "open role" : "future hire";
+      if (removed.size === 0) return { lastMessage: `No ${noun}s to remove.` };
+      const employees = promoteAfterRemoval(s.employees, removed);
+      const label = `Removed ${removed.size} ${noun}${removed.size === 1 ? "" : "s"}`;
+      return {
+        past: [...s.past, { employees: clone(s.employees), label }],
+        future: [],
+        employees,
+        selectedId: null,
+        lastMessage: label + ".",
+      };
+    }),
+
+  // Bulk: remove every manager with exactly one direct report, promoting it up.
+  delayerSingleReports: () =>
+    set((s) => {
+      const childCount = new Map<string, number>();
+      for (const e of s.employees) {
+        if (e.managerId) childCount.set(e.managerId, (childCount.get(e.managerId) ?? 0) + 1);
+      }
+      const removed = new Set(s.employees.filter((e) => childCount.get(e.id) === 1).map((e) => e.id));
+      if (removed.size === 0) return { lastMessage: "No single-report managers to de-layer." };
+      const employees = promoteAfterRemoval(s.employees, removed);
+      const label = `De-layered ${removed.size} single-report manager${removed.size === 1 ? "" : "s"}`;
+      return {
+        past: [...s.past, { employees: clone(s.employees), label }],
+        future: [],
+        employees,
+        selectedId: null,
+        lastMessage: label + ".",
+      };
+    }),
+
+  // Bulk: move all of one manager's direct reports under another manager.
+  reassignReports: (fromId, toId) =>
+    set((s) => {
+      if (fromId === toId) return s;
+      let moved = 0;
+      const employees = s.employees.map((e) => {
+        if (e.managerId === fromId && !wouldCreateCycle(s.employees, e.id, toId)) {
+          moved++;
+          return { ...e, managerId: toId };
+        }
+        return e;
+      });
+      if (moved === 0) return { lastMessage: "No reports could be moved (none, or would create a cycle)." };
+      const fromName = s.employees.find((e) => e.id === fromId)?.name ?? "?";
+      const toName = s.employees.find((e) => e.id === toId)?.name ?? "?";
+      const label = `Moved ${moved} report${moved === 1 ? "" : "s"} from ${fromName} to ${toName}`;
+      return {
+        past: [...s.past, { employees: clone(s.employees), label }],
+        future: [],
+        employees,
+        selectedId: null,
+        lastMessage: label + ".",
+      };
+    }),
+
   select: (id) => set({ selectedId: id }),
 
   setThresholds: (t) => set((s) => ({ thresholds: { ...s.thresholds, ...t } })),
@@ -449,6 +514,26 @@ export function collapseUnderRoots(employees: Employee[]): Set<string> {
   const collapsed = new Set<string>();
   for (const id of hasReports) if (!isRoot.has(id)) collapsed.add(id);
   return collapsed;
+}
+
+/**
+ * Remove a set of ids, re-homing each removed node's reports to the nearest
+ * surviving ancestor (walking past other removed nodes). Used by bulk actions.
+ */
+export function promoteAfterRemoval(employees: Employee[], removed: Set<string>): Employee[] {
+  const byId = new Map(employees.map((e) => [e.id, e]));
+  const surviving = (startMgr: string | null): string | null => {
+    let cur = startMgr;
+    const seen = new Set<string>();
+    while (cur && removed.has(cur) && !seen.has(cur)) {
+      seen.add(cur);
+      cur = byId.get(cur)?.managerId ?? null;
+    }
+    return cur && removed.has(cur) ? null : cur;
+  };
+  return employees
+    .filter((e) => !removed.has(e.id))
+    .map((e) => (e.managerId && removed.has(e.managerId) ? { ...e, managerId: surviving(e.managerId) } : e));
 }
 
 /** Sorted unique department names present in the roster. */

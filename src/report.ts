@@ -38,7 +38,7 @@ const EDIT_FIELDS: [keyof Employee, string][] = [
 const statusLabel = (v: unknown) =>
   v === "open" ? "Open role" : v === "future" ? "Future hire" : "Filled";
 
-function diffRosters(baseline: Employee[], current: Employee[]) {
+export function diffRosters(baseline: Employee[], current: Employee[]) {
   const base = new Map(baseline.map((e) => [e.id, e]));
   const cur = new Map(current.map((e) => [e.id, e]));
   // Resolve manager ids to names across both snapshots.
@@ -128,7 +128,8 @@ export function buildChangeReportHtml(
   thresholds: Thresholds,
   dateStr: string,
   baselineLabel: string,
-  baselineAt: string
+  baselineAt: string,
+  currentLabel = "current working org"
 ): string {
   const { moves, added, removed, edits } = diffRosters(baseline, current);
   const base = computeMetrics(baseline, thresholds);
@@ -206,8 +207,8 @@ export function buildChangeReportHtml(
 <body><div class="wrap">
   <header>
     <h1>Org Design — Change Report</h1>
-    <div class="sub">Baseline: <strong>${esc(baselineLabel)}</strong> <span class="muted">(set ${esc(baselineAt)})</span></div>
-    <div class="sub">Generated ${esc(dateStr)} · ${totalChanges} change${totalChanges === 1 ? "" : "s"} since baseline · span flags: narrow &lt;${thresholds.narrow}, wide &gt;${thresholds.wide}</div>
+    <div class="sub">Comparing <strong>${esc(baselineLabel)}</strong> <span class="muted">(set ${esc(baselineAt)})</span> → <strong>${esc(currentLabel)}</strong></div>
+    <div class="sub">Generated ${esc(dateStr)} · ${totalChanges} change${totalChanges === 1 ? "" : "s"} · span flags: narrow &lt;${thresholds.narrow}, wide &gt;${thresholds.wide}</div>
   </header>
 
   <div class="toolbar"><button onclick="window.print()">Save as PDF / Print</button></div>
@@ -235,13 +236,14 @@ export function openChangeReport(
   current: Employee[],
   thresholds: Thresholds,
   baselineLabel: string,
-  baselineAt: string
+  baselineAt: string,
+  currentLabel?: string
 ): boolean {
   const dateStr = new Date().toLocaleString(undefined, {
     dateStyle: "long",
     timeStyle: "short",
   });
-  const html = buildChangeReportHtml(baseline, current, thresholds, dateStr, baselineLabel, baselineAt);
+  const html = buildChangeReportHtml(baseline, current, thresholds, dateStr, baselineLabel, baselineAt, currentLabel);
   const w = window.open("", "_blank");
   if (!w) return false; // popup blocked
   w.document.open();

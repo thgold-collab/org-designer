@@ -7,6 +7,8 @@ import { openChartExport } from "../chartExport";
 import { ImportWizard } from "./ImportWizard";
 import { BaselinePicker } from "./BaselinePicker";
 import { SearchBox } from "./SearchBox";
+import { ScenarioCompare } from "./ScenarioCompare";
+import { BulkActions } from "./BulkActions";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 
 export function Toolbar() {
@@ -41,6 +43,8 @@ export function Toolbar() {
     mapping: Record<string, string>;
   } | null>(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
+  const [showBulk, setShowBulk] = useState(false);
 
   const deptCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -132,6 +136,9 @@ export function Toolbar() {
         >
           + Open role
         </button>
+        <button onClick={() => setShowBulk(true)} title="Bulk what-if actions across the org">
+          Bulk what-ifs…
+        </button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 
@@ -204,6 +211,9 @@ export function Toolbar() {
         <button onClick={() => setShowPicker(true)} title="Restore a saved baseline / choose what to compare against">
           Restore baseline… ({snapshotCount})
         </button>
+        <button onClick={() => setShowCompare(true)} title="Compare two scenarios side by side">
+          Compare A/B…
+        </button>
         <button
           className={showDiff ? "primary" : ""}
           onClick={toggleDiff}
@@ -257,6 +267,8 @@ export function Toolbar() {
         />
       )}
       {showPicker && <BaselinePicker onClose={() => setShowPicker(false)} />}
+      {showCompare && <ScenarioCompare onClose={() => setShowCompare(false)} />}
+      {showBulk && <BulkActions onClose={() => setShowBulk(false)} />}
     </>
   );
 }

@@ -131,6 +131,27 @@ html, body {
 .snap-actions { display: flex; gap: 5px; flex: 0 0 auto; }
 .snap-actions button { padding: 5px 9px; font-size: 12px; }
 
+/* A/B compare */
+.ab-pickers { display: flex; align-items: flex-end; gap: 12px; margin: 6px 0 12px; }
+.ab-pickers > div { flex: 1; }
+.ab-pickers label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.ab-pickers select { width: 100%; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; font-size: 13px; }
+.ab-arrow { flex: 0 0 auto; color: var(--muted); font-size: 18px; padding-bottom: 6px; }
+.ab-summary { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 11px; font-size: 13px; margin-bottom: 12px; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.compare-table th { text-align: left; color: var(--muted); font-weight: 600; padding: 5px 8px; border-bottom: 1px solid var(--border); font-size: 11px; }
+.compare-table td { padding: 5px 8px; border-bottom: 1px solid #20283322; }
+.compare-table .num, .compare-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.compare-table tbody tr:nth-child(odd) { background: var(--panel-2); }
+
+/* Bulk actions */
+.bulk-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.bulk-title { font-size: 13px; font-weight: 600; }
+.bulk-count { background: var(--accent-dim); color: #cfe3ff; border-radius: 20px; padding: 1px 8px; font-size: 11px; margin-left: 4px; }
+.bulk-desc { font-size: 11px; color: var(--muted); margin-top: 2px; max-width: 360px; }
+.bulk-reassign { display: flex; align-items: center; gap: 8px; }
+.bulk-reassign select { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 8px; font-size: 13px; }
+
 .err-overlay {
   position: fixed;
   inset: 0;
