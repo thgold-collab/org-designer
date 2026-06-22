@@ -54,8 +54,9 @@ export const useOrg = create<OrgState>((set, get) => ({
   focusId: null,
   focusNonce: 0,
   rosterNonce: 0,
-  // Default on for mobile/narrow screens where losing the org is most painful.
-  autoCenter: typeof window !== "undefined" && window.matchMedia("(max-width: 820px)").matches,
+  // Off by default: free panning. Clamp keeps the org on screen; the Recenter/Fit
+  // buttons and this toggle are there if you want snap-to-center behavior.
+  autoCenter: false,
   past: [],
   future: [],
   lastMessage: null,
