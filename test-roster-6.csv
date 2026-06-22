@@ -1,0 +1,7 @@
+Employee ID,Name,Job Title,Manager ID,Salary,Level,FTE,Department,Location,Cost Center,Tenure (mo),Rating,Vacancy
+E100,Dana Whitfield,"Director, Engineering",,205000,Dir,1.0,Engineering,HQ - Seattle,CC-ENG-101,84,Exceeds,
+E101,Marcus Lee,Senior Engineer,E100,158000,IC3,1.0,Engineering,HQ - Seattle,CC-ENG-101,52,Meets,
+E102,Priya Nair,Senior Engineer,E100,162000,IC3,1.0,Engineering,SF Bay Area,CC-ENG-101,61,Exceeds,
+E103,Tom Becker,Engineer,E100,124000,IC2,1.0,Engineering,Remote - US,CC-ENG-101,33,Meets,
+E104,Sofia Ramos,Engineer,E100,121000,IC2,1.0,Engineering,HQ - Seattle,CC-ENG-101,18,Developing,
+E105,Aiden Cole,Principal Engineer,E100,191000,IC4,1.0,Engineering,SF Bay Area,CC-ENG-101,96,Outstanding,
