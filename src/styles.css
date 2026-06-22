@@ -37,9 +37,9 @@ html, body {
   overscroll-behavior: none;
   overflow: hidden;
   height: 100%;
-  width: 100%;
-  position: fixed; /* lock the page so one-finger drags never scroll it on mobile */
-  inset: 0;
+  /* NB: do NOT use position:fixed here — on iOS WebKit it makes the whole page
+     paint blank during pinch/scroll gestures. Page scroll is already prevented
+     by overflow:hidden + the app filling the viewport + touch-action on canvas. */
 }
 
 /* ---------- Toolbar ---------- */
