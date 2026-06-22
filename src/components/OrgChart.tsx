@@ -102,6 +102,35 @@ export function OrgChart() {
     });
   }
 
+  // Re-center the org at the current zoom (the "bring it back" button).
+  function recenter() {
+    const wrap = wrapRef.current;
+    if (!wrap || width === 0) return;
+    setView((v) => ({
+      k: v.k,
+      x: (wrap.clientWidth - width * v.k) / 2,
+      y: Math.max(20, (wrap.clientHeight - height * v.k) / 2),
+    }));
+  }
+
+  // Keep at least part of the org on screen so a pan/pinch can never lose it.
+  function clampView(v: View): View {
+    const wrap = wrapRef.current;
+    if (!wrap) return v;
+    const cw = wrap.clientWidth;
+    const ch = wrap.clientHeight;
+    const contentW = Math.max(NODE_W, width) * v.k;
+    const contentH = Math.max(NODE_H, height) * v.k;
+    const m = Math.min(120, cw * 0.4, ch * 0.4); // min visible content on each edge
+    const minX = m - contentW;
+    const maxX = cw - m;
+    const minY = m - contentH;
+    const maxY = ch - m;
+    const x = minX > maxX ? (cw - contentW) / 2 : Math.min(maxX, Math.max(minX, v.x));
+    const y = minY > maxY ? (ch - contentH) / 2 : Math.min(maxY, Math.max(minY, v.y));
+    return { k: v.k, x, y };
+  }
+
   // ----- Background gestures: 1 pointer = pan, 2 pointers = pinch-zoom -----
   function onWrapPointerDown(e: React.PointerEvent) {
     if ((e.target as HTMLElement).closest(".node")) return;
@@ -151,7 +180,7 @@ export function OrgChart() {
       // keep point under cursor stable
       const wx = (mx - v.x) / v.k;
       const wy = (my - v.y) / v.k;
-      return { k, x: mx - wx * k, y: my - wy * k };
+      return clampView({ k, x: mx - wx * k, y: my - wy * k });
     });
   }
 
@@ -182,15 +211,17 @@ export function OrgChart() {
         // Keep the world point under the pinch anchor fixed as we scale.
         const wx = (p.ax - p.vx) / p.k0;
         const wy = (p.ay - p.vy) / p.k0;
-        setView({ k, x: p.ax - wx * k, y: p.ay - wy * k });
+        setView(clampView({ k, x: p.ax - wx * k, y: p.ay - wy * k }));
         return;
       }
       if (panRef.current) {
-        setView((v) => ({
-          ...v,
-          x: panRef.current!.vx + (e.clientX - panRef.current!.x),
-          y: panRef.current!.vy + (e.clientY - panRef.current!.y),
-        }));
+        setView((v) =>
+          clampView({
+            k: v.k,
+            x: panRef.current!.vx + (e.clientX - panRef.current!.x),
+            y: panRef.current!.vy + (e.clientY - panRef.current!.y),
+          })
+        );
         return;
       }
       if (drag) {
@@ -231,11 +262,28 @@ export function OrgChart() {
         setHoverTarget(null);
       }
     }
+    // iOS/Safari fires pointercancel (not pointerup) when it reclaims a gesture.
+    // Without this the finger stays "stuck" in the map and the next touch is
+    // misread as a pinch against a stale point, flinging the org off-screen.
+    function cancel(e: PointerEvent) {
+      pointersRef.current.delete(e.pointerId);
+      if (pointersRef.current.size < 2) pinchRef.current = null;
+      if (pointersRef.current.size === 0) {
+        panRef.current = null;
+        setPanning(false);
+      }
+      if (drag) {
+        setDrag(null);
+        setHoverTarget(null);
+      }
+    }
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", cancel);
     return () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", cancel);
     };
   });
 
@@ -323,8 +371,9 @@ export function OrgChart() {
       <div className="zoom-controls">
         <button title="Collapse all branches" onClick={collapseAll}>⊟</button>
         <button title="Expand all branches" onClick={expandAll}>⊞</button>
-        <button onClick={() => setView((v) => ({ ...v, k: Math.min(2.5, v.k * 1.2) }))}>+</button>
-        <button onClick={() => setView((v) => ({ ...v, k: Math.max(0.15, v.k / 1.2) }))}>−</button>
+        <button onClick={() => setView((v) => clampView({ ...v, k: Math.min(2.5, v.k * 1.2) }))}>+</button>
+        <button onClick={() => setView((v) => clampView({ ...v, k: Math.max(0.15, v.k / 1.2) }))}>−</button>
+        <button title="Recenter the org" onClick={recenter}>◎</button>
         <button title="Fit to screen" onClick={fitToView}>⤢</button>
       </div>
     </div>
