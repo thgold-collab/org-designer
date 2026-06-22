@@ -38,6 +38,8 @@ export function Toolbar() {
   const loadRoster = useOrg((s) => s.loadRoster);
   const employees = useOrg((s) => s.employees);
   const baseline = useOrg((s) => s.baseline);
+  const baselineLabel = useOrg((s) => s.baselineLabel);
+  const baselineAt = useOrg((s) => s.baselineAt);
   const setBaseline = useOrg((s) => s.setBaselineToCurrent);
   const reset = useOrg((s) => s.resetToBaseline);
   const undo = useOrg((s) => s.undo);
@@ -148,16 +150,24 @@ export function Toolbar() {
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 
-        <button onClick={setBaseline} title="Snapshot current org as the 'before' to compare against">
+        <button
+          onClick={() => {
+            const def = `Baseline ${new Date().toLocaleDateString()}`;
+            const label = window.prompt("Name this baseline (shown in the change report):", baselineLabel || def);
+            if (label === null) return; // cancelled
+            setBaseline(label);
+          }}
+          title="Snapshot the current org as the named 'before' to compare against"
+        >
           Set baseline
         </button>
         <button onClick={reset} className="danger">Reset to baseline</button>
         <button
           onClick={() => {
-            const ok = openChangeReport(baseline, employees, thresholds);
+            const ok = openChangeReport(baseline, employees, thresholds, baselineLabel, baselineAt);
             if (!ok) setWarnings(["Allow pop-ups for this site to open the PDF report."]);
           }}
-          title="Generate a PDF report of every change vs. the baseline, with a metrics summary"
+          title={`Generate a PDF report of every change vs. baseline “${baselineLabel}”`}
         >
           Change report (PDF)
         </button>

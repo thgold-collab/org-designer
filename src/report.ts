@@ -122,7 +122,9 @@ export function buildChangeReportHtml(
   baseline: Employee[],
   current: Employee[],
   thresholds: Thresholds,
-  dateStr: string
+  dateStr: string,
+  baselineLabel: string,
+  baselineAt: string
 ): string {
   const { moves, added, removed, edits } = diffRosters(baseline, current);
   const base = computeMetrics(baseline, thresholds);
@@ -200,7 +202,8 @@ export function buildChangeReportHtml(
 <body><div class="wrap">
   <header>
     <h1>Org Design — Change Report</h1>
-    <div class="sub">Generated ${esc(dateStr)} · ${totalChanges} change${totalChanges === 1 ? "" : "s"} vs. baseline · span flags: narrow &lt;${thresholds.narrow}, wide &gt;${thresholds.wide}</div>
+    <div class="sub">Baseline: <strong>${esc(baselineLabel)}</strong> <span class="muted">(set ${esc(baselineAt)})</span></div>
+    <div class="sub">Generated ${esc(dateStr)} · ${totalChanges} change${totalChanges === 1 ? "" : "s"} since baseline · span flags: narrow &lt;${thresholds.narrow}, wide &gt;${thresholds.wide}</div>
   </header>
 
   <div class="toolbar"><button onclick="window.print()">Save as PDF / Print</button></div>
@@ -226,13 +229,15 @@ export function buildChangeReportHtml(
 export function openChangeReport(
   baseline: Employee[],
   current: Employee[],
-  thresholds: Thresholds
+  thresholds: Thresholds,
+  baselineLabel: string,
+  baselineAt: string
 ): boolean {
   const dateStr = new Date().toLocaleString(undefined, {
     dateStyle: "long",
     timeStyle: "short",
   });
-  const html = buildChangeReportHtml(baseline, current, thresholds, dateStr);
+  const html = buildChangeReportHtml(baseline, current, thresholds, dateStr, baselineLabel, baselineAt);
   const w = window.open("", "_blank");
   if (!w) return false; // popup blocked
   w.document.open();

@@ -11,6 +11,8 @@ interface HistoryEntry {
 interface OrgState {
   employees: Employee[]; // working set
   baseline: Employee[]; // snapshot for before/after diff
+  baselineLabel: string; // name of the baseline scenario (used in reports)
+  baselineAt: string; // when the baseline was captured (display string)
   thresholds: Thresholds;
   selectedId: string | null;
   deptFilter: string | null; // null = whole org
@@ -37,7 +39,7 @@ interface OrgState {
   deleteEmployee: (id: string) => void;
   select: (id: string | null) => void;
   setThresholds: (t: Partial<Thresholds>) => void;
-  setBaselineToCurrent: () => void;
+  setBaselineToCurrent: (label?: string) => void;
   resetToBaseline: () => void;
   undo: () => void;
   redo: () => void;
@@ -46,9 +48,14 @@ interface OrgState {
 
 const clone = (e: Employee[]) => e.map((x) => ({ ...x }));
 
+const nowStr = () =>
+  new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+
 export const useOrg = create<OrgState>((set, get) => ({
   employees: clone(SAMPLE_ROSTER),
   baseline: clone(SAMPLE_ROSTER),
+  baselineLabel: "Initial roster",
+  baselineAt: nowStr(),
   thresholds: { narrow: 3, wide: 9 },
   selectedId: null,
   deptFilter: null,
@@ -154,6 +161,8 @@ export const useOrg = create<OrgState>((set, get) => ({
     set((s) => ({
       employees: clone(employees),
       baseline: makeBaseline ? clone(employees) : s.baseline,
+      baselineLabel: makeBaseline ? "Imported roster" : s.baselineLabel,
+      baselineAt: makeBaseline ? nowStr() : s.baselineAt,
       past: [],
       future: [],
       selectedId: null,
@@ -214,8 +223,15 @@ export const useOrg = create<OrgState>((set, get) => ({
 
   setThresholds: (t) => set((s) => ({ thresholds: { ...s.thresholds, ...t } })),
 
-  setBaselineToCurrent: () =>
-    set((s) => ({ baseline: clone(s.employees), lastMessage: "Baseline set to current org." })),
+  setBaselineToCurrent: (label) => {
+    const name = (label ?? "").trim() || `Baseline ${nowStr()}`;
+    set((s) => ({
+      baseline: clone(s.employees),
+      baselineLabel: name,
+      baselineAt: nowStr(),
+      lastMessage: `Baseline saved: “${name}”`,
+    }));
+  },
 
   resetToBaseline: () =>
     set((s) => ({
