@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useOrg, departmentsOf } from "../store";
 import { parseRoster } from "../csv";
+import { openChangeReport } from "../report";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 import type { Employee } from "../types";
 
@@ -36,6 +37,7 @@ function download(filename: string, text: string) {
 export function Toolbar() {
   const loadRoster = useOrg((s) => s.loadRoster);
   const employees = useOrg((s) => s.employees);
+  const baseline = useOrg((s) => s.baseline);
   const setBaseline = useOrg((s) => s.setBaselineToCurrent);
   const reset = useOrg((s) => s.resetToBaseline);
   const undo = useOrg((s) => s.undo);
@@ -150,6 +152,15 @@ export function Toolbar() {
           Set baseline
         </button>
         <button onClick={reset} className="danger">Reset to baseline</button>
+        <button
+          onClick={() => {
+            const ok = openChangeReport(baseline, employees, thresholds);
+            if (!ok) setWarnings(["Allow pop-ups for this site to open the PDF report."]);
+          }}
+          title="Generate a PDF report of every change vs. the baseline, with a metrics summary"
+        >
+          Change report (PDF)
+        </button>
         <button className="primary" onClick={() => download("org-scenario.csv", exportCsv(employees))}>
           Export CSV
         </button>
