@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useOrg, filterByDept } from "../store";
 import { computeMetrics, spanRows, SPAN_BUCKETS } from "../metrics";
 import type { OrgMetrics } from "../types";
@@ -15,7 +15,13 @@ export function MetricsPanel() {
   const deptFilter = useOrg((s) => s.deptFilter);
   const thresholds = useOrg((s) => s.thresholds);
   const selectedId = useOrg((s) => s.selectedId);
+  const editNonce = useOrg((s) => s.editNonce);
   const [tab, setTab] = useState<Tab>("metrics");
+
+  // When a role is added (or edit is requested), jump to the Detail tab.
+  useEffect(() => {
+    if (editNonce > 0) setTab("detail");
+  }, [editNonce]);
 
   const employees = useMemo(() => filterByDept(allEmployees, deptFilter), [allEmployees, deptFilter]);
   const baseline = useMemo(() => filterByDept(allBaseline, deptFilter), [allBaseline, deptFilter]);

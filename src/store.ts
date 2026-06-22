@@ -17,6 +17,7 @@ interface OrgState {
   collapsed: Set<string>; // node ids whose subtree is hidden
   focusId: string | null; // node the chart should center on
   focusNonce: number; // bumps to re-trigger focus on the same id
+  editNonce: number; // bumps to ask the panel to open the Detail tab
   rosterNonce: number; // bumps when a new roster loads (chart re-fits)
   autoCenter: boolean; // snap the org back to center when a gesture ends
   past: HistoryEntry[];
@@ -29,6 +30,7 @@ interface OrgState {
   collapseAll: () => void;
   expandAll: () => void;
   focusNode: (id: string) => void;
+  addOpenRole: (managerId?: string | null) => void;
   loadRoster: (employees: Employee[], makeBaseline?: boolean) => void;
   reparent: (nodeId: string, newManagerId: string | null) => boolean;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
@@ -53,6 +55,7 @@ export const useOrg = create<OrgState>((set, get) => ({
   collapsed: collapseUnderRoots(SAMPLE_ROSTER),
   focusId: null,
   focusNonce: 0,
+  editNonce: 0,
   rosterNonce: 0,
   // Off by default: free panning. Clamp keeps the org on screen; the Recenter/Fit
   // buttons and this toggle are there if you want snap-to-center behavior.
@@ -102,6 +105,48 @@ export const useOrg = create<OrgState>((set, get) => ({
         focusId: id,
         focusNonce: s.focusNonce + 1,
         lastMessage: emp ? `Jumped to ${emp.name}` : null,
+      };
+    }),
+
+  addOpenRole: (managerId) =>
+    set((s) => {
+      const ids = new Set(s.employees.map((e) => e.id));
+      let n = 1;
+      while (ids.has(`role-${n}`)) n++;
+      const id = `role-${n}`;
+
+      // Manager: explicit arg, else the selected node, else the top-most root.
+      let mid = managerId ?? s.selectedId ?? null;
+      if (mid == null || !ids.has(mid)) {
+        const root = s.employees.find((e) => !e.managerId || !ids.has(e.managerId));
+        mid = root?.id ?? null;
+      }
+      const mgr = mid ? s.employees.find((e) => e.id === mid) : undefined;
+
+      const role: Employee = {
+        id,
+        name: "Open Role",
+        title: "New Role",
+        managerId: mid,
+        isVacancy: true,
+        // inherit so it stays in the same department filter / location grouping
+        department: mgr?.department,
+        location: mgr?.location,
+      };
+
+      const collapsed = new Set(s.collapsed);
+      if (mid) collapsed.delete(mid); // expand the manager so the new role shows
+
+      return {
+        past: [...s.past, { employees: clone(s.employees), label: "Add open role" }],
+        future: [],
+        employees: [...s.employees, role],
+        collapsed,
+        selectedId: id,
+        focusId: id,
+        focusNonce: s.focusNonce + 1,
+        editNonce: s.editNonce + 1,
+        lastMessage: "Added open role — edit the details in the panel.",
       };
     }),
 

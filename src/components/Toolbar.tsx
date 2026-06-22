@@ -48,6 +48,7 @@ export function Toolbar() {
   const setDeptFilter = useOrg((s) => s.setDeptFilter);
   const autoCenter = useOrg((s) => s.autoCenter);
   const toggleAutoCenter = useOrg((s) => s.toggleAutoCenter);
+  const addOpenRole = useOrg((s) => s.addOpenRole);
   const fileRef = useRef<HTMLInputElement>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -84,6 +85,15 @@ export function Toolbar() {
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
         <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample (600)</button>
         <button onClick={() => download("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
+
+        <div style={{ width: 1, height: 22, background: "var(--border)" }} />
+
+        <button
+          onClick={() => addOpenRole()}
+          title="Add an open (unfilled) role under the selected person, or at the top of the org"
+        >
+          + Open role
+        </button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 

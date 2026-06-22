@@ -8,6 +8,7 @@ export function DetailPanel() {
   const update = useOrg((s) => s.updateEmployee);
   const del = useOrg((s) => s.deleteEmployee);
   const reparent = useOrg((s) => s.reparent);
+  const addOpenRole = useOrg((s) => s.addOpenRole);
 
   const emp = employees.find((e) => e.id === selectedId);
   const { childrenOf } = useMemo(() => buildForest(employees), [employees]);
@@ -100,7 +101,10 @@ export function DetailPanel() {
         </>
       )}
 
-      <button className="danger" style={{ marginTop: 16, width: "100%" }} onClick={() => del(emp.id)}>
+      <button style={{ marginTop: 16, width: "100%" }} onClick={() => addOpenRole(emp.id)}>
+        + Add open role under {emp.name}
+      </button>
+      <button className="danger" style={{ marginTop: 8, width: "100%" }} onClick={() => del(emp.id)}>
         Remove {emp.name}
       </button>
     </div>
