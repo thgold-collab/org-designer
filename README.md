@@ -35,6 +35,8 @@ npm run build    # production build into dist/
 - **Works on phone & tablet** — responsive layout (a bottom Chart/Metrics switch on
   narrow screens) with full touch support: one-finger pan, pinch-to-zoom, and
   drag-a-box to reassign. iPad landscape shows the full side-by-side desktop view.
+  An **Auto-center** toggle (on by default on mobile) snaps the org back to center
+  whenever you lift your finger, so it can never wander off-screen.
 
 ## Roster columns
 

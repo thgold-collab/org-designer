@@ -18,10 +18,12 @@ interface OrgState {
   focusId: string | null; // node the chart should center on
   focusNonce: number; // bumps to re-trigger focus on the same id
   rosterNonce: number; // bumps when a new roster loads (chart re-fits)
+  autoCenter: boolean; // snap the org back to center when a gesture ends
   past: HistoryEntry[];
   future: HistoryEntry[];
   lastMessage: string | null;
 
+  toggleAutoCenter: () => void;
   setDeptFilter: (dept: string | null) => void;
   toggleCollapse: (id: string) => void;
   collapseAll: () => void;
@@ -52,9 +54,17 @@ export const useOrg = create<OrgState>((set, get) => ({
   focusId: null,
   focusNonce: 0,
   rosterNonce: 0,
+  // Default on for mobile/narrow screens where losing the org is most painful.
+  autoCenter: typeof window !== "undefined" && window.matchMedia("(max-width: 820px)").matches,
   past: [],
   future: [],
   lastMessage: null,
+
+  toggleAutoCenter: () =>
+    set((s) => ({
+      autoCenter: !s.autoCenter,
+      lastMessage: !s.autoCenter ? "Auto-center on" : "Auto-center off",
+    })),
 
   setDeptFilter: (dept) => set({ deptFilter: dept, selectedId: null }),
 

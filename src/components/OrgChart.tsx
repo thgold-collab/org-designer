@@ -32,6 +32,7 @@ export function OrgChart() {
   const focusId = useOrg((s) => s.focusId);
   const focusNonce = useOrg((s) => s.focusNonce);
   const rosterNonce = useOrg((s) => s.rosterNonce);
+  const autoCenter = useOrg((s) => s.autoCenter);
 
   const employees = useMemo(
     () => filterByDept(allEmployees, deptFilter),
@@ -270,7 +271,9 @@ export function OrgChart() {
           panRef.current = null;
           setPanning(false);
         }
-        if (pointersRef.current.size === 0) requestAnimationFrame(ensureVisible);
+        if (pointersRef.current.size === 0) {
+          requestAnimationFrame(autoCenter ? recenter : ensureVisible);
+        }
       }
       if (drag) {
         if (!drag.moved) {
@@ -295,7 +298,7 @@ export function OrgChart() {
       if (pointersRef.current.size === 0) {
         panRef.current = null;
         setPanning(false);
-        requestAnimationFrame(ensureVisible);
+        requestAnimationFrame(autoCenter ? recenter : ensureVisible);
       }
       if (drag) {
         setDrag(null);

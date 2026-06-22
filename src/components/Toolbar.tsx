@@ -46,6 +46,8 @@ export function Toolbar() {
   const setThresholds = useOrg((s) => s.setThresholds);
   const deptFilter = useOrg((s) => s.deptFilter);
   const setDeptFilter = useOrg((s) => s.setDeptFilter);
+  const autoCenter = useOrg((s) => s.autoCenter);
+  const toggleAutoCenter = useOrg((s) => s.toggleAutoCenter);
   const fileRef = useRef<HTMLInputElement>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
 
@@ -95,6 +97,14 @@ export function Toolbar() {
             </option>
           ))}
         </select>
+
+        <button
+          className={autoCenter ? "primary" : ""}
+          onClick={toggleAutoCenter}
+          title="Keep the org centered — re-centers each time you lift your finger/mouse"
+        >
+          ◎ Auto-center {autoCenter ? "on" : "off"}
+        </button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
 
