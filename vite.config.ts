@@ -21,12 +21,11 @@ const buildStamp = `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(
   now.getUTCDate()
 )} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())} UTC`;
 
-// On GitHub Pages the app is served from /org-designer/ (the repo name), so the
-// production build needs that base path. Dev/preview stay at root for simplicity.
-// If you later attach a custom domain (e.g. org.ybloc.com), change base back to "/".
-export default defineConfig(({ command }) => ({
+// Served at the root of the custom domain https://org.ybloc.us (see public/CNAME),
+// so base is "/". The old github.io/org-designer/ URL now redirects to the domain.
+export default defineConfig(() => ({
   plugins: [react()],
-  base: command === "build" ? "/org-designer/" : "/",
+  base: "/",
   server: { port: 5180 },
   define: {
     __BUILD_SHA__: JSON.stringify(gitSha()),
