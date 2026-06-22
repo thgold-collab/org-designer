@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from "react";
 import { useOrg, departmentsOf } from "../store";
-import { parseRoster } from "../csv";
+import { parseCsvRaw, autoMap, buildEmployees, mappingIsComplete } from "../csv";
 import { openChangeReport } from "../report";
+import { ImportWizard } from "./ImportWizard";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 import type { Employee } from "../types";
 
@@ -54,7 +55,14 @@ export function Toolbar() {
   const toggleAutoCenter = useOrg((s) => s.toggleAutoCenter);
   const addOpenRole = useOrg((s) => s.addOpenRole);
   const fileRef = useRef<HTMLInputElement>(null);
+  const forceWizard = useRef(false);
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [wizard, setWizard] = useState<{
+    fileName: string;
+    headers: string[];
+    rows: Record<string, string>[];
+    mapping: Record<string, string>;
+  } | null>(null);
 
   const deptCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -63,18 +71,36 @@ export function Toolbar() {
   }, [employees]);
   const departments = useMemo(() => departmentsOf(employees), [employees]);
 
+  function openImport(force: boolean) {
+    forceWizard.current = force;
+    fileRef.current?.click();
+  }
+
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    const force = forceWizard.current;
+    forceWizard.current = false;
     if (!file) return;
     const text = await file.text();
-    const { employees: emps, warnings: w } = parseRoster(text);
-    if (emps.length === 0) {
+    e.target.value = "";
+
+    const { headers, rows } = parseCsvRaw(text);
+    if (rows.length === 0) {
       setWarnings(["No rows could be parsed from that file."]);
       return;
     }
-    loadRoster(emps);
-    setWarnings(w);
-    e.target.value = "";
+    const mapping = autoMap(headers);
+
+    // Fast path: auto-detected an identifier + manager link and not forced.
+    if (!force && mappingIsComplete(mapping)) {
+      const { employees: emps, warnings: w } = buildEmployees(rows, mapping);
+      loadRoster(emps);
+      setWarnings(w);
+      return;
+    }
+    // Otherwise open the wizard to map columns by hand.
+    setWarnings([]);
+    setWizard({ fileName: file.name, headers, rows, mapping });
   }
 
   return (
@@ -85,7 +111,8 @@ export function Toolbar() {
           {__BUILD_SHA__} · {__BUILD_STAMP__}
         </span>
 
-        <button onClick={() => fileRef.current?.click()}>Import CSV…</button>
+        <button onClick={() => openImport(false)}>Import CSV…</button>
+        <button onClick={() => openImport(true)} title="Import and manually map columns">Map columns…</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
         <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample (600)</button>
         <button onClick={() => download("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
@@ -183,6 +210,19 @@ export function Toolbar() {
             ))}
           </div>
         </div>
+      )}
+      {wizard && (
+        <ImportWizard
+          fileName={wizard.fileName}
+          headers={wizard.headers}
+          rows={wizard.rows}
+          initialMapping={wizard.mapping}
+          onCancel={() => setWizard(null)}
+          onImport={(emps) => {
+            loadRoster(emps);
+            setWizard(null);
+          }}
+        />
       )}
     </>
   );
