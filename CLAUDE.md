@@ -40,7 +40,7 @@ Always run `npx tsc -b --noEmit` (or `npm run build`) before committing — TS i
   pointerup can null it before React runs the updater, throwing mid-render (the old
   blank-screen bug). Capture `const p = ref.current` first. Don't put `position: fixed`
   on `html`/`body` (blanks the page on gesture). Handle `pointercancel` like `pointerup`.
-- **Custom domain:** served at root of **org.ybloc.us** (GitHub Pages), so `vite.config.ts`
+- **Custom domain:** served at root of **orgdesigner.ybloc.us** (GitHub Pages), so `vite.config.ts`
   `base` is `/` and `public/CNAME` holds the domain. If that ever changes, fix both.
 - **Build badge:** `__BUILD_SHA__` / `__BUILD_STAMP__` are injected via Vite `define`
   (prefers CI `GITHUB_SHA`) and shown in the toolbar — used to confirm a fresh deploy.
@@ -48,5 +48,5 @@ Always run `npx tsc -b --noEmit` (or `npm run build`) before committing — TS i
 
 ## Deploy
 Push to `main` → `.github/workflows/deploy.yml` runs `npm test` then `npm run build` and
-publishes to GitHub Pages (org.ybloc.us). **Always ask Ted before pushing.** Repo:
+publishes to GitHub Pages (orgdesigner.ybloc.us). **Always ask Ted before pushing.** Repo:
 https://github.com/thgold-collab/org-designer
