@@ -5,6 +5,7 @@ import {
   computeMetrics,
   spanRows,
   wouldCreateCycle,
+  computeCost,
 } from "./metrics";
 import { collapseUnderRoots, filterByDept } from "./store";
 import type { Employee, Thresholds } from "./types";
@@ -115,6 +116,31 @@ describe("collapseUnderRoots", () => {
     expect(c.has("2")).toBe(true);
     expect(c.has("3")).toBe(true);
     expect(c.has("4")).toBe(false); // ICs aren't managers
+  });
+});
+
+describe("computeCost", () => {
+  it("reports no salary data when none present", () => {
+    const c = computeCost(ORG); // ORG has no salaries
+    expect(c.hasSalary).toBe(false);
+    expect(c.total).toBe(0);
+  });
+
+  it("totals comp and breaks down by layer/dept/location", () => {
+    const paid: Employee[] = [
+      { id: "1", name: "CEO", managerId: null, salary: 300000, department: "Exec", location: "HQ" },
+      { id: "2", name: "VP", managerId: "1", salary: 200000, department: "Eng", location: "HQ" },
+      { id: "3", name: "IC", managerId: "2", salary: 100000, department: "Eng", location: "Remote" },
+    ];
+    const c = computeCost(paid);
+    expect(c.hasSalary).toBe(true);
+    expect(c.total).toBe(600000);
+    expect(c.avg).toBe(200000);
+    expect(c.managerComp).toBe(500000); // CEO + VP manage
+    expect(c.overheadPct).toBeCloseTo(500000 / 600000);
+    expect(c.byLayer.map((l) => l.value)).toEqual([300000, 200000, 100000]); // L1,L2,L3
+    expect(c.byDept.find((d) => d.label === "Eng")!.value).toBe(300000);
+    expect(c.byLocation.find((l) => l.label === "HQ")!.value).toBe(500000);
   });
 });
 

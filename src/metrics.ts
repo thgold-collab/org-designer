@@ -249,6 +249,60 @@ export function spanRows(
   return rows;
 }
 
+export interface CostBreakdown {
+  hasSalary: boolean;
+  total: number;
+  avg: number; // average over people who have a salary
+  withSalaryCount: number;
+  managerComp: number;
+  overheadPct: number; // management comp / total comp
+  byLayer: { label: string; value: number }[];
+  byDept: { label: string; value: number }[];
+  byLocation: { label: string; value: number }[];
+}
+
+/** Comp breakdowns by layer / department / location. Empty-ish if no salaries. */
+export function computeCost(employees: Employee[]): CostBreakdown {
+  const { childrenOf } = buildForest(employees);
+  const { nodes } = layoutForest(employees);
+  const depthById = new Map(nodes.map((n) => [n.id, n.depth]));
+
+  let total = 0;
+  let managerComp = 0;
+  let withSalaryCount = 0;
+  const byLayer = new Map<number, number>();
+  const byDept = new Map<string, number>();
+  const byLoc = new Map<string, number>();
+
+  for (const e of employees) {
+    const sal = e.salary ?? 0;
+    if (e.salary != null && e.salary > 0) withSalaryCount++;
+    total += sal;
+    if ((childrenOf.get(e.id)?.length ?? 0) > 0) managerComp += sal;
+    const d = depthById.get(e.id) ?? 0;
+    byLayer.set(d, (byLayer.get(d) ?? 0) + sal);
+    byDept.set(e.department || "—", (byDept.get(e.department || "—") ?? 0) + sal);
+    byLoc.set(e.location || "—", (byLoc.get(e.location || "—") ?? 0) + sal);
+  }
+
+  const sortDesc = (m: Map<string, number>) =>
+    [...m.entries()].sort((a, b) => b[1] - a[1]).map(([label, value]) => ({ label, value }));
+
+  return {
+    hasSalary: withSalaryCount > 0,
+    total,
+    avg: withSalaryCount ? total / withSalaryCount : 0,
+    withSalaryCount,
+    managerComp,
+    overheadPct: total ? managerComp / total : 0,
+    byLayer: [...byLayer.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([d, value]) => ({ label: `L${d + 1}`, value })),
+    byDept: sortDesc(byDept),
+    byLocation: sortDesc(byLoc),
+  };
+}
+
 /** Would re-parenting `nodeId` under `newManagerId` create a cycle? */
 export function wouldCreateCycle(
   employees: Employee[],

@@ -107,6 +107,7 @@ export function Toolbar() {
   const autoCenter = useOrg((s) => s.autoCenter);
   const toggleAutoCenter = useOrg((s) => s.toggleAutoCenter);
   const addOpenRole = useOrg((s) => s.addOpenRole);
+  const addPerson = useOrg((s) => s.addPerson);
   const showDiff = useOrg((s) => s.showDiff);
   const toggleDiff = useOrg((s) => s.toggleDiff);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -248,6 +249,7 @@ export function Toolbar() {
       id: "insert",
       label: "Insert",
       items: [
+        { label: "+ Add person", onClick: () => addPerson() },
         { label: "+ Open role", onClick: () => addOpenRole() },
         { label: "Bulk what-ifs…", onClick: () => setShowBulk(true) },
       ],

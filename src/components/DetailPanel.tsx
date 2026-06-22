@@ -9,6 +9,7 @@ export function DetailPanel() {
   const del = useOrg((s) => s.deleteEmployee);
   const reparent = useOrg((s) => s.reparent);
   const addOpenRole = useOrg((s) => s.addOpenRole);
+  const addPerson = useOrg((s) => s.addPerson);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const emp = employees.find((e) => e.id === selectedId);
@@ -113,7 +114,10 @@ export function DetailPanel() {
         </>
       )}
 
-      <button style={{ marginTop: 16, width: "100%" }} onClick={() => addOpenRole(emp.id)}>
+      <button style={{ marginTop: 16, width: "100%" }} onClick={() => addPerson(emp.id)}>
+        + Add report under {emp.name}
+      </button>
+      <button style={{ marginTop: 8, width: "100%" }} onClick={() => addOpenRole(emp.id)}>
         + Add open role under {emp.name}
       </button>
       <button className="danger" style={{ marginTop: 8, width: "100%" }} onClick={onRemove}>

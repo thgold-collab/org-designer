@@ -352,6 +352,30 @@ button.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad)
 .diff-legend .dl-moved { background: #d29922; }
 .diff-legend .dl-note { color: #5e6b7d; font-style: italic; }
 
+.zoom-controls button.on { background: var(--accent-dim); border-color: var(--accent); color: #cfe3ff; }
+.legend-panel {
+  position: absolute;
+  bottom: 58px;
+  right: 12px;
+  background: rgba(15,20,25,0.95);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 11px;
+  color: var(--text);
+  box-shadow: var(--shadow);
+  z-index: 20;
+}
+.legend-h { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.legend-item { display: flex; align-items: center; gap: 7px; margin: 4px 0; }
+.lg-swatch { width: 22px; height: 14px; border-radius: 3px; background: var(--panel-2); border: 1.5px solid var(--border); flex: 0 0 auto; display: inline-block; }
+.lg-swatch.lg-narrow { border-left: 4px solid var(--warn); }
+.lg-swatch.lg-wide { border-left: 4px solid var(--bad); }
+.lg-swatch.lg-open { border-style: dashed; }
+.lg-swatch.lg-future { border-style: dashed; border-color: #6aacff; }
+.lg-swatch.lg-added { box-shadow: 0 0 0 2px rgba(63,185,80,0.8); }
+.lg-swatch.lg-moved { box-shadow: 0 0 0 2px rgba(210,153,34,0.9); }
+
 .node .n-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .node .n-title { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .node .n-meta { display: flex; gap: 6px; margin-top: auto; align-items: center; }

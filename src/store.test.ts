@@ -47,6 +47,17 @@ describe("bulk store actions", () => {
     expect(emps.find((e) => e.id === "3")!.managerId).toBe("1"); // promoted
   });
 
+  it("addPerson adds a filled report (no status); addOpenRole adds an open one", () => {
+    const n0 = useOrg.getState().employees.length;
+    useOrg.getState().addPerson("1");
+    const added = useOrg.getState().employees[useOrg.getState().employees.length - 1];
+    expect(useOrg.getState().employees.length).toBe(n0 + 1);
+    expect(added.managerId).toBe("1");
+    expect(added.status).toBeUndefined(); // filled
+    useOrg.getState().addOpenRole("1");
+    expect(useOrg.getState().employees[useOrg.getState().employees.length - 1].status).toBe("open");
+  });
+
   it("reassignReports moves a team to a new manager", () => {
     useOrg.getState().reassignReports("2", "1"); // move M's reports (IC) up to CEO
     expect(useOrg.getState().employees.find((e) => e.id === "3")!.managerId).toBe("1");

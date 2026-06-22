@@ -62,6 +62,7 @@ export function OrgChart() {
   const [hoverTarget, setHoverTarget] = useState<string | null>(null);
   const panRef = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
   const [panning, setPanning] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
   // Active touch points on the background, and the in-progress pinch gesture.
   const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
   const pinchRef = useRef<{ d0: number; k0: number; ax: number; ay: number; vx: number; vy: number } | null>(null);
@@ -431,7 +432,20 @@ export function OrgChart() {
         <button onClick={() => setView((v) => clampView({ ...v, k: Math.max(0.15, v.k / 1.2) }))}>−</button>
         <button title="Recenter the org" onClick={recenter}>◎</button>
         <button title="Fit to screen" onClick={fitToView}>⤢</button>
+        <button title="Legend" className={showLegend ? "on" : ""} onClick={() => setShowLegend((v) => !v)}>?</button>
       </div>
+
+      {showLegend && (
+        <div className="legend-panel">
+          <div className="legend-h">Legend</div>
+          <div className="legend-item"><span className="lg-swatch lg-narrow" /> Narrow span (&lt; {thresholds.narrow})</div>
+          <div className="legend-item"><span className="lg-swatch lg-wide" /> Wide span (&gt; {thresholds.wide})</div>
+          <div className="legend-item"><span className="lg-swatch lg-open" /> Open role</div>
+          <div className="legend-item"><span className="lg-swatch lg-future" /> Future hire</div>
+          <div className="legend-item"><span className="lg-swatch lg-added" /> Added vs baseline</div>
+          <div className="legend-item"><span className="lg-swatch lg-moved" /> Moved vs baseline</div>
+        </div>
+      )}
     </div>
   );
 }

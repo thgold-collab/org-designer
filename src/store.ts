@@ -45,6 +45,7 @@ interface OrgState {
   expandAll: () => void;
   focusNode: (id: string) => void;
   addOpenRole: (managerId?: string | null) => void;
+  addPerson: (managerId?: string | null) => void;
   loadRoster: (employees: Employee[], makeBaseline?: boolean) => void;
   reparent: (nodeId: string, newManagerId: string | null) => boolean;
   updateEmployee: (id: string, patch: Partial<Employee>) => void;
@@ -183,47 +184,8 @@ export const useOrg = create<OrgState>((set, get) => ({
       };
     }),
 
-  addOpenRole: (managerId) =>
-    set((s) => {
-      const ids = new Set(s.employees.map((e) => e.id));
-      let n = 1;
-      while (ids.has(`role-${n}`)) n++;
-      const id = `role-${n}`;
-
-      // Manager: explicit arg, else the selected node, else the top-most root.
-      let mid = managerId ?? s.selectedId ?? null;
-      if (mid == null || !ids.has(mid)) {
-        const root = s.employees.find((e) => !e.managerId || !ids.has(e.managerId));
-        mid = root?.id ?? null;
-      }
-      const mgr = mid ? s.employees.find((e) => e.id === mid) : undefined;
-
-      const role: Employee = {
-        id,
-        name: "Open Role",
-        title: "New Role",
-        managerId: mid,
-        status: "open",
-        // inherit so it stays in the same department filter / location grouping
-        department: mgr?.department,
-        location: mgr?.location,
-      };
-
-      const collapsed = new Set(s.collapsed);
-      if (mid) collapsed.delete(mid); // expand the manager so the new role shows
-
-      return {
-        past: [...s.past, { employees: clone(s.employees), label: "Add open role" }],
-        future: [],
-        employees: [...s.employees, role],
-        collapsed,
-        selectedId: id,
-        focusId: id,
-        focusNonce: s.focusNonce + 1,
-        editNonce: s.editNonce + 1,
-        lastMessage: "Added open role — edit the details in the panel.",
-      };
-    }),
+  addOpenRole: (managerId) => set((s) => addRolePatch(s, managerId, "open")),
+  addPerson: (managerId) => set((s) => addRolePatch(s, managerId, undefined)),
 
   loadRoster: (employees, makeBaseline = true) =>
     set((s) => {
@@ -514,6 +476,50 @@ export function collapseUnderRoots(employees: Employee[]): Set<string> {
   const collapsed = new Set<string>();
   for (const id of hasReports) if (!isRoot.has(id)) collapsed.add(id);
   return collapsed;
+}
+
+/** Shared logic for adding a person / open role / future hire under a manager. */
+function addRolePatch(s: OrgState, managerId: string | null | undefined, status: Employee["status"]) {
+  const ids = new Set(s.employees.map((e) => e.id));
+  let n = 1;
+  while (ids.has(`role-${n}`)) n++;
+  const id = `role-${n}`;
+
+  // Manager: explicit arg, else the selected node, else the top-most root.
+  let mid = managerId ?? s.selectedId ?? null;
+  if (mid == null || !ids.has(mid)) {
+    const root = s.employees.find((e) => !e.managerId || !ids.has(e.managerId));
+    mid = root?.id ?? null;
+  }
+  const mgr = mid ? s.employees.find((e) => e.id === mid) : undefined;
+
+  const name = status === "open" ? "Open Role" : status === "future" ? "Future Hire" : "New Person";
+  const role: Employee = {
+    id,
+    name,
+    title: "New Role",
+    managerId: mid,
+    status,
+    // inherit so it stays in the same department filter / location grouping
+    department: mgr?.department,
+    location: mgr?.location,
+  };
+
+  const collapsed = new Set(s.collapsed);
+  if (mid) collapsed.delete(mid); // expand the manager so the new node shows
+
+  const noun = status === "open" ? "open role" : status === "future" ? "future hire" : "person";
+  return {
+    past: [...s.past, { employees: clone(s.employees), label: `Add ${noun}` }],
+    future: [],
+    employees: [...s.employees, role],
+    collapsed,
+    selectedId: id,
+    focusId: id,
+    focusNonce: s.focusNonce + 1,
+    editNonce: s.editNonce + 1,
+    lastMessage: `Added ${noun} — edit the details in the panel.`,
+  };
 }
 
 /**

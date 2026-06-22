@@ -3,11 +3,12 @@ import { useOrg, filterByDept } from "../store";
 import { computeMetrics, spanRows, SPAN_BUCKETS } from "../metrics";
 import type { OrgMetrics } from "../types";
 import { DetailPanel } from "./DetailPanel";
+import { CostPanel } from "./CostPanel";
 
 const money = (n: number) =>
   n >= 1_000_000 ? `$${(n / 1_000_000).toFixed(2)}M` : `$${Math.round(n / 1000)}k`;
 
-type Tab = "metrics" | "spans" | "detail";
+type Tab = "metrics" | "spans" | "cost" | "detail";
 
 export function MetricsPanel() {
   const allEmployees = useOrg((s) => s.employees);
@@ -29,7 +30,12 @@ export function MetricsPanel() {
   const cur = useMemo(() => computeMetrics(employees, thresholds), [employees, thresholds]);
   const base = useMemo(() => computeMetrics(baseline, thresholds), [baseline, thresholds]);
 
-  const activeTab = selectedId && tab === "detail" ? "detail" : tab;
+  // Cost only matters when there's salary data.
+  const hasSalary = useMemo(() => employees.some((e) => e.salary != null && e.salary > 0), [employees]);
+
+  // If the Cost tab is active but salary data disappears, fall back to Metrics.
+  const wanted = selectedId && tab === "detail" ? "detail" : tab;
+  const activeTab = wanted === "cost" && !hasSalary ? "metrics" : wanted;
 
   return (
     <div className="panel">
@@ -40,13 +46,19 @@ export function MetricsPanel() {
         <div className={`tab${activeTab === "spans" ? " active" : ""}`} onClick={() => setTab("spans")}>
           Spans
         </div>
+        {hasSalary && (
+          <div className={`tab${activeTab === "cost" ? " active" : ""}`} onClick={() => setTab("cost")}>
+            Cost
+          </div>
+        )}
         <div className={`tab${activeTab === "detail" ? " active" : ""}`} onClick={() => setTab("detail")}>
           Detail
         </div>
       </div>
 
-      {activeTab === "metrics" && <MetricsView cur={cur} base={base} />}
+      {activeTab === "metrics" && <MetricsView cur={cur} base={base} hasSalary={hasSalary} />}
       {activeTab === "spans" && <SpansView />}
+      {activeTab === "cost" && <CostPanel />}
       {activeTab === "detail" && <DetailPanel />}
     </div>
   );
@@ -100,7 +112,7 @@ function Kpi({
   );
 }
 
-function MetricsView({ cur, base }: { cur: OrgMetrics; base: OrgMetrics }) {
+function MetricsView({ cur, base, hasSalary }: { cur: OrgMetrics; base: OrgMetrics; hasSalary: boolean }) {
   const f1 = (n: number) => n.toFixed(1);
   const maxLayer = Math.max(1, ...cur.layerCounts, ...base.layerCounts);
 
@@ -183,12 +195,16 @@ function MetricsView({ cur, base }: { cur: OrgMetrics; base: OrgMetrics }) {
         ))}
       </div>
 
-      <div className="section-title">Ratios & cost</div>
+      <div className="section-title">Ratios{hasSalary ? " & cost" : ""}</div>
       <div className="kpi-grid">
         <Kpi label="IC : Manager" value={`${cur.icPerManager.toFixed(1)}:1`} curRaw={cur.icPerManager} baseRaw={base.icPerManager} goodDir="up" fmt={f1} />
         <Kpi label="% managers" value={`${(cur.managerRatio * 100).toFixed(0)}%`} curRaw={cur.managerRatio * 100} baseRaw={base.managerRatio * 100} goodDir="down" fmt={(n) => `${n.toFixed(0)}%`} />
-        <Kpi label="Total comp" value={money(cur.totalComp)} curRaw={cur.totalComp} baseRaw={base.totalComp} goodDir="none" fmt={money} />
-        <Kpi label="Mgmt comp" value={money(cur.managerComp)} curRaw={cur.managerComp} baseRaw={base.managerComp} goodDir="down" fmt={money} />
+        {hasSalary && (
+          <>
+            <Kpi label="Total comp" value={money(cur.totalComp)} curRaw={cur.totalComp} baseRaw={base.totalComp} goodDir="none" fmt={money} />
+            <Kpi label="Mgmt comp" value={money(cur.managerComp)} curRaw={cur.managerComp} baseRaw={base.managerComp} goodDir="down" fmt={money} />
+          </>
+        )}
       </div>
     </div>
   );
