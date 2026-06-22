@@ -29,8 +29,14 @@ npm run build    # production build into dist/
     and a sortable per-manager table.
   - Layers / depth — max & average layers, headcount per layer.
   - Headcount, manager ratio, IC:manager ratio, total & management comp.
-- **Baseline diffing** — *Set baseline* snapshots the current org; every metric then
-  shows how your edits move it. *Reset to baseline* reverts.
+- **Named baselines & restore** — *Set baseline* saves a named snapshot (and offers a
+  CSV copy); *Restore baseline…* opens a picker to load any snapshot back or choose
+  which one the metrics/report compare against.
+- **Find a person** — search box jumps to and centers anyone by name/title.
+- **Visual diff** — toggle highlights nodes added/moved vs the active baseline.
+- **Exports** — change-report PDF, the org chart as SVG/PDF, and the roster as CSV.
+- **Autosave** — your working draft is kept in the browser (on-device only) and restored
+  on reload; importing or loading the sample confirms before discarding unsaved edits.
 - **Undo / redo** (⌘Z / ⌘⇧Z) and **Export CSV** of any scenario.
 - **Works on phone & tablet** — responsive layout (a bottom Chart/Metrics switch on
   narrow screens) with full touch support: one-finger pan, pinch-to-zoom, and

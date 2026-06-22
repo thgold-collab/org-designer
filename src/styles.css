@@ -212,6 +212,34 @@ button.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad)
 }
 .dept-select:hover { border-color: #3a4757; }
 
+.search-box { position: relative; flex: 0 0 auto; }
+.search-box input {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--text);
+  padding: 6px 10px;
+  font-size: 13px;
+  width: 170px;
+}
+.search-box input:focus { outline: none; border-color: var(--accent); }
+.search-results {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  z-index: 1500;
+  overflow: hidden;
+}
+.search-item { padding: 7px 10px; cursor: pointer; }
+.search-item.active { background: var(--accent-dim); }
+.search-item .si-name { font-size: 13px; font-weight: 600; }
+.search-item .si-title { display: block; font-size: 11px; color: var(--muted); }
+
 /* ---------- Main layout ---------- */
 .main {
   display: grid;
@@ -276,6 +304,28 @@ button.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad)
 .node.dragging { opacity: 0.35; }
 .node.vacancy { border-style: dashed; background: repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 8px, #232d3a 8px, #232d3a 16px); }
 .node.future-hire { border-style: dashed; border-color: #6aacff; background: repeating-linear-gradient(45deg, var(--panel-2), var(--panel-2) 8px, #1d3050 8px, #1d3050 16px); }
+.node.diff-added { box-shadow: 0 0 0 3px rgba(63,185,80,0.7), var(--shadow); }
+.node.diff-moved { box-shadow: 0 0 0 3px rgba(210,153,34,0.8), var(--shadow); }
+
+.diff-legend {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(15,20,25,0.85);
+  padding: 7px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.diff-legend span { display: flex; align-items: center; gap: 5px; }
+.diff-legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.diff-legend .dl-added { background: #3fb950; }
+.diff-legend .dl-moved { background: #d29922; }
+.diff-legend .dl-note { color: #5e6b7d; font-style: italic; }
 
 .node .n-name { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .node .n-title { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

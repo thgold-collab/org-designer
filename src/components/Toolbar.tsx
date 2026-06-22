@@ -3,8 +3,10 @@ import { useOrg, departmentsOf } from "../store";
 import { parseCsvRaw, autoMap, buildEmployees, mappingIsComplete, employeesToCsv } from "../csv";
 import { downloadText, slugify } from "../download";
 import { openChangeReport } from "../report";
+import { openChartExport } from "../chartExport";
 import { ImportWizard } from "./ImportWizard";
 import { BaselinePicker } from "./BaselinePicker";
+import { SearchBox } from "./SearchBox";
 import { TEMPLATE_CSV, SAMPLE_ROSTER } from "../sampleData";
 
 export function Toolbar() {
@@ -26,6 +28,9 @@ export function Toolbar() {
   const autoCenter = useOrg((s) => s.autoCenter);
   const toggleAutoCenter = useOrg((s) => s.toggleAutoCenter);
   const addOpenRole = useOrg((s) => s.addOpenRole);
+  const showDiff = useOrg((s) => s.showDiff);
+  const toggleDiff = useOrg((s) => s.toggleDiff);
+  const collapsed = useOrg((s) => s.collapsed);
   const fileRef = useRef<HTMLInputElement>(null);
   const forceWizard = useRef(false);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -43,6 +48,34 @@ export function Toolbar() {
     return counts;
   }, [employees]);
   const departments = useMemo(() => departmentsOf(employees), [employees]);
+
+  // Dirty = the working org differs from the active baseline (robust across
+  // reloads, where undo history is gone but the restored draft may have edits).
+  function isDirty(): boolean {
+    const { employees: cur, baseline } = useOrg.getState();
+    if (cur.length !== baseline.length) return true;
+    const b = new Map(baseline.map((e) => [e.id, e]));
+    for (const e of cur) {
+      const o = b.get(e.id);
+      if (!o) return true;
+      if (
+        (o.managerId ?? "") !== (e.managerId ?? "") ||
+        o.name !== e.name ||
+        (o.title ?? "") !== (e.title ?? "") ||
+        (o.status ?? "") !== (e.status ?? "")
+      )
+        return true;
+    }
+    return false;
+  }
+
+  // Guard against silently discarding unsaved edits when replacing the org.
+  function confirmReplace(): boolean {
+    if (!isDirty()) return true;
+    return window.confirm(
+      "This replaces your current org and any unsaved edits. Continue?\n\n(Tip: Set baseline first to keep them.)"
+    );
+  }
 
   function openImport(force: boolean) {
     forceWizard.current = force;
@@ -66,6 +99,7 @@ export function Toolbar() {
 
     // Fast path: auto-detected an identifier + manager link and not forced.
     if (!force && mappingIsComplete(mapping)) {
+      if (!confirmReplace()) return;
       const { employees: emps, warnings: w } = buildEmployees(rows, mapping);
       loadRoster(emps);
       setWarnings(w);
@@ -87,7 +121,7 @@ export function Toolbar() {
         <button onClick={() => openImport(false)}>Import CSV…</button>
         <button onClick={() => openImport(true)} title="Import and manually map columns">Map columns…</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" onChange={onFile} />
-        <button onClick={() => loadRoster(SAMPLE_ROSTER)}>Load sample (600)</button>
+        <button onClick={() => { if (confirmReplace()) loadRoster(SAMPLE_ROSTER); }}>Load sample (600)</button>
         <button onClick={() => downloadText("roster-template.csv", TEMPLATE_CSV)}>Get template</button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
@@ -100,6 +134,8 @@ export function Toolbar() {
         </button>
 
         <div style={{ width: 1, height: 22, background: "var(--border)" }} />
+
+        <SearchBox />
 
         <select
           className="dept-select"
@@ -169,6 +205,13 @@ export function Toolbar() {
           Restore baseline… ({snapshotCount})
         </button>
         <button
+          className={showDiff ? "primary" : ""}
+          onClick={toggleDiff}
+          title={`Highlight nodes added/moved vs. baseline “${baselineLabel}” on the chart`}
+        >
+          Diff {showDiff ? "on" : "off"}
+        </button>
+        <button
           onClick={() => {
             const ok = openChangeReport(baseline, employees, thresholds, baselineLabel, baselineAt);
             if (!ok) setWarnings(["Allow pop-ups for this site to open the PDF report."]);
@@ -176,6 +219,15 @@ export function Toolbar() {
           title={`Generate a PDF report of every change vs. baseline “${baselineLabel}”`}
         >
           Change report (PDF)
+        </button>
+        <button
+          onClick={() => {
+            const ok = openChartExport(employees, collapsed, deptFilter, thresholds);
+            if (!ok) setWarnings(["Allow pop-ups for this site to open the chart export."]);
+          }}
+          title="Export the current chart view as an image (SVG) or PDF"
+        >
+          Export chart
         </button>
         <button className="primary" onClick={() => downloadText("org-scenario.csv", employeesToCsv(employees))}>
           Export CSV
@@ -198,6 +250,7 @@ export function Toolbar() {
           initialMapping={wizard.mapping}
           onCancel={() => setWizard(null)}
           onImport={(emps) => {
+            if (!confirmReplace()) return;
             loadRoster(emps);
             setWizard(null);
           }}

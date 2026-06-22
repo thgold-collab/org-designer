@@ -32,10 +32,12 @@ interface OrgState {
   editNonce: number; // bumps to ask the panel to open the Detail tab
   rosterNonce: number; // bumps when a new roster loads (chart re-fits)
   autoCenter: boolean; // snap the org back to center when a gesture ends
+  showDiff: boolean; // highlight added/moved nodes vs the active baseline
   past: HistoryEntry[];
   future: HistoryEntry[];
   lastMessage: string | null;
 
+  toggleDiff: () => void;
   toggleAutoCenter: () => void;
   setDeptFilter: (dept: string | null) => void;
   toggleCollapse: (id: string) => void;
@@ -74,17 +76,52 @@ const makeSnapshot = (label: string, employees: Employee[]): Snapshot => ({
 
 const INITIAL_SNAPSHOT = makeSnapshot("Initial roster", SAMPLE_ROSTER);
 
+// --- Autosave (on-device localStorage; nothing leaves the machine) ---
+const PERSIST_KEY = "org-designer-state-v1";
+interface Persisted {
+  employees: Employee[];
+  snapshots: Snapshot[];
+  baselineId: string | null;
+  baseline: Employee[];
+  baselineLabel: string;
+  baselineAt: string;
+  thresholds: Thresholds;
+  collapsed: string[];
+  deptFilter: string | null;
+}
+function loadPersisted(): Persisted | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PERSIST_KEY);
+    if (!raw) return null;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.employees) || d.employees.length === 0) return null;
+    return d as Persisted;
+  } catch {
+    return null;
+  }
+}
+const SAVED = loadPersisted();
+if (SAVED?.snapshots?.length) {
+  // Keep new snapshot ids from colliding with restored ones.
+  const maxN = Math.max(
+    0,
+    ...SAVED.snapshots.map((s) => parseInt(String(s.id).replace("snap-", ""), 10) || 0)
+  );
+  snapSeq = maxN + 1;
+}
+
 export const useOrg = create<OrgState>((set, get) => ({
-  employees: clone(SAMPLE_ROSTER),
-  snapshots: [INITIAL_SNAPSHOT],
-  baselineId: INITIAL_SNAPSHOT.id,
-  baseline: clone(INITIAL_SNAPSHOT.employees),
-  baselineLabel: INITIAL_SNAPSHOT.label,
-  baselineAt: INITIAL_SNAPSHOT.at,
-  thresholds: { narrow: 3, wide: 9 },
+  employees: clone(SAVED?.employees ?? SAMPLE_ROSTER),
+  snapshots: SAVED?.snapshots ?? [INITIAL_SNAPSHOT],
+  baselineId: SAVED?.baselineId ?? INITIAL_SNAPSHOT.id,
+  baseline: clone(SAVED?.baseline ?? INITIAL_SNAPSHOT.employees),
+  baselineLabel: SAVED?.baselineLabel ?? INITIAL_SNAPSHOT.label,
+  baselineAt: SAVED?.baselineAt ?? INITIAL_SNAPSHOT.at,
+  thresholds: SAVED?.thresholds ?? { narrow: 3, wide: 9 },
   selectedId: null,
-  deptFilter: null,
-  collapsed: collapseUnderRoots(SAMPLE_ROSTER),
+  deptFilter: SAVED?.deptFilter ?? null,
+  collapsed: SAVED?.collapsed ? new Set(SAVED.collapsed) : collapseUnderRoots(SAMPLE_ROSTER),
   focusId: null,
   focusNonce: 0,
   editNonce: 0,
@@ -92,9 +129,12 @@ export const useOrg = create<OrgState>((set, get) => ({
   // Off by default: free panning. Clamp keeps the org on screen; the Recenter/Fit
   // buttons and this toggle are there if you want snap-to-center behavior.
   autoCenter: false,
+  showDiff: false,
   past: [],
   future: [],
   lastMessage: null,
+
+  toggleDiff: () => set((s) => ({ showDiff: !s.showDiff })),
 
   toggleAutoCenter: () =>
     set((s) => ({
@@ -365,6 +405,34 @@ export const useOrg = create<OrgState>((set, get) => ({
 
   clearMessage: () => set({ lastMessage: null }),
 }));
+
+// Debounced autosave of the working draft to localStorage (on-device only).
+if (typeof window !== "undefined") {
+  let saveTimer: ReturnType<typeof setTimeout> | undefined;
+  useOrg.subscribe((s) => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          PERSIST_KEY,
+          JSON.stringify({
+            employees: s.employees,
+            snapshots: s.snapshots,
+            baselineId: s.baselineId,
+            baseline: s.baseline,
+            baselineLabel: s.baselineLabel,
+            baselineAt: s.baselineAt,
+            thresholds: s.thresholds,
+            collapsed: [...s.collapsed],
+            deptFilter: s.deptFilter,
+          } satisfies Persisted)
+        );
+      } catch {
+        /* quota or serialization issue — skip this save */
+      }
+    }, 400);
+  });
+}
 
 /**
  * Collapse every manager except the top-level roots, so the org opens as just

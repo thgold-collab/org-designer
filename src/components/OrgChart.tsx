@@ -33,11 +33,26 @@ export function OrgChart() {
   const focusNonce = useOrg((s) => s.focusNonce);
   const rosterNonce = useOrg((s) => s.rosterNonce);
   const autoCenter = useOrg((s) => s.autoCenter);
+  const showDiff = useOrg((s) => s.showDiff);
+  const baseline = useOrg((s) => s.baseline);
 
   const employees = useMemo(
     () => filterByDept(allEmployees, deptFilter),
     [allEmployees, deptFilter]
   );
+
+  // Diff vs the active baseline: which nodes are new or have moved managers.
+  const diffById = useMemo(() => {
+    const m = new Map<string, "added" | "moved">();
+    if (!showDiff) return m;
+    const base = new Map(baseline.map((e) => [e.id, e]));
+    for (const e of allEmployees) {
+      const b = base.get(e.id);
+      if (!b) m.set(e.id, "added");
+      else if ((b.managerId ?? "") !== (e.managerId ?? "")) m.set(e.id, "moved");
+    }
+    return m;
+  }, [showDiff, baseline, allEmployees]);
 
   const wrapRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<View>({ x: 80, y: 60, k: 0.85 });
@@ -363,6 +378,7 @@ export function OrgChart() {
                 isTarget ? "drop-target" : "",
                 n.emp.status === "open" ? "vacancy" : "",
                 n.emp.status === "future" ? "future-hire" : "",
+                diffById.has(n.id) ? `diff-${diffById.get(n.id)}` : "",
               ].join(" ")}
               style={{ left: n.x, top: n.y }}
               onPointerDown={(e) => onNodePointerDown(e, n.id)}
@@ -397,9 +413,17 @@ export function OrgChart() {
         </div>
       )}
 
-      <div className="canvas-hint">
-        Drag a box onto another to re-assign · scroll to zoom · drag background to pan
-      </div>
+      {showDiff ? (
+        <div className="diff-legend">
+          <span><i className="dl-added" /> Added</span>
+          <span><i className="dl-moved" /> Moved</span>
+          <span className="dl-note">vs baseline</span>
+        </div>
+      ) : (
+        <div className="canvas-hint">
+          Drag a box onto another to re-assign · scroll to zoom · drag background to pan
+        </div>
+      )}
       <div className="zoom-controls">
         <button title="Collapse all branches" onClick={collapseAll}>⊟</button>
         <button title="Expand all branches" onClick={expandAll}>⊞</button>
